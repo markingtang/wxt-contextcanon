@@ -1,5 +1,7 @@
 # WXT ContextCanon
 
+English | [简体中文](README.zh-CN.md)
+
 > Canonical context and state for AI agents.
 
 **WXT ContextCanon 0.1.1 — Public release.** Repository:

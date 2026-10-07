@@ -1,5 +1,7 @@
 # Contributing
 
+English | [简体中文](CONTRIBUTING.zh-CN.md)
+
 Thanks for considering it. A few rules keep this repository publishable.
 
 ## Before you start

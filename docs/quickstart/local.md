@@ -1,5 +1,7 @@
 # Five-minute local Quickstart
 
+English | [简体中文](local.zh-CN.md)
+
 Requirements: Git and Python 3.9+ with SQLite. Check `python --version` on Windows;
 Linux/macOS may call it `python3`. No package installation, Docker, account, or API key
 is needed. Use a new clone for the synthetic demo; `--reset` replaces demo state.

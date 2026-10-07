@@ -1,5 +1,7 @@
 # Benchmark
 
+中文说明：[README 的基准对比](../README.zh-CN.md#为什么不直接用-markdown)。本页保留英文案例细节。
+
 ## What this is
 
 A small, deterministic, synthetic benchmark with a Markdown baseline. It exists to make

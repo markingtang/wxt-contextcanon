@@ -9,6 +9,8 @@ version: 0.1.1
 
 # WXT ContextCanon - shared context and file-state ledger
 
+中文用户指南：[MCP 接入](../../docs/MCP_TOOLS.zh-CN.md)与[项目介绍](../../README.zh-CN.md)。此 Agent Skill 保留英文规则。
+
 WXT ContextCanon gives many agents **one** personal context and **one** file-state ledger.
 Use it instead of re-deriving facts every session, and instead of silently
 editing files without a declared intent.

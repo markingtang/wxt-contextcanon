@@ -1,5 +1,7 @@
 # MCP tools
 
+English | [简体中文](MCP_TOOLS.zh-CN.md)
+
 **8 tools.** The surface is deliberately small: agents get a stable vocabulary, and
 everything else lives in the CLI.
 

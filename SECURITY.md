@@ -1,5 +1,7 @@
 # Security policy
 
+English | [简体中文](SECURITY.zh-CN.md)
+
 ## Scope
 
 WXT ContextCanon — the packages under `packages/`, the CLI, the MCP server, the

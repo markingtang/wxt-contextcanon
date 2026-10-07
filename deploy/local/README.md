@@ -1,5 +1,7 @@
 # Local (no Docker) deployment
 
+中文入门：[5 分钟本地教程](../../docs/quickstart/local.zh-CN.md)。本页保留英文详细说明。
+
 This is the recommended path for the first 30 minutes.
 
 ```bash

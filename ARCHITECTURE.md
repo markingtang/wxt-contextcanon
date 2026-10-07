@@ -1,5 +1,7 @@
 # WXT ContextCanon Architecture
 
+English | [简体中文](ARCHITECTURE.zh-CN.md)
+
 Describes what is actually built, not what was planned.
 
 ---
