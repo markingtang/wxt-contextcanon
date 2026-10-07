@@ -1,0 +1,86 @@
+{
+  "_warning": "All cases are synthetic and deterministic. No LLM judge is used by default.",
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "simple_recall",
+      "kind": "recall",
+      "capability": "structured read",
+      "question": "What is the subject's display name?",
+      "smoke": true,
+      "expected": "Sam Rivera"
+    },
+    {
+      "id": "simple_update",
+      "kind": "update",
+      "capability": "write then read",
+      "question": "Set communication.style to 'paragraphs', then read it back.",
+      "smoke": true,
+      "expected": "paragraphs"
+    },
+    {
+      "id": "temporal_as_of",
+      "kind": "temporal",
+      "capability": "temporal lifecycle",
+      "question": "What was the editor 90 days ago (before the correction)?",
+      "smoke": true,
+      "expected": "vscode"
+    },
+    {
+      "id": "supersede_chain",
+      "kind": "history",
+      "capability": "revision chain",
+      "question": "How many revisions does tooling.editor have, and in what order?",
+      "smoke": true,
+      "expected": [
+        "vscode",
+        "zed"
+      ]
+    },
+    {
+      "id": "conflict_reject",
+      "kind": "conflict",
+      "capability": "conflict / supersede",
+      "question": "After the rejected inference, what is the active timezone and how many rejected facts exist?",
+      "smoke": true,
+      "expected": {
+        "timezone": "Europe/Lisbon",
+        "rejected": 1
+      }
+    },
+    {
+      "id": "provenance_filter",
+      "kind": "provenance",
+      "capability": "provenance",
+      "question": "Which fact values came from source 'inferred'?",
+      "smoke": false,
+      "expected": [
+        "America/New_York"
+      ]
+    },
+    {
+      "id": "expired_audit",
+      "kind": "lifecycle",
+      "capability": "expired auditability",
+      "question": "Is a fact whose validity window has passed still retrievable, and with what status?",
+      "smoke": false,
+      "expected": "expired"
+    },
+    {
+      "id": "shared_store_consistency",
+      "kind": "convergence",
+      "capability": "shared store consistency",
+      "question": "Two agent service objects over one local store: does a value written by one read back through the other?",
+      "smoke": true,
+      "expected": "Sam Rivera"
+    },
+    {
+      "id": "offline_rebuild",
+      "kind": "registry",
+      "capability": "offline recovery / rebuild",
+      "question": "After two devices queue work offline and reconnect, does a rebuild converge the index?",
+      "smoke": true,
+      "expected": true
+    }
+  ]
+}

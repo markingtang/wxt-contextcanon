@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wxt-contextcanon"
+version = "0.1.0"
+description = "Canonical context and state for AI agents."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Xiaotang" }]
+keywords = ["ai-agents", "context", "memory", "temporal", "provenance", "mcp", "local-first"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries",
+  "Operating System :: OS Independent",
+]
+# Runtime dependencies: none. WXT ContextCanon runs on the Python standard
+# library plus SQLite so a new user can be running in minutes with no install
+# step. See docs/THIRD_PARTY_NOTICES.md for the dependency and provenance audit.
+dependencies = []
+
+[project.optional-dependencies]
+dev = []
+
+[project.scripts]
+contextcanon = "contextcanon_cli.cli:main"
+
+[project.urls]
+Repository = "https://github.com/markingtang/wxt-contextcanon"
+
+[tool.setuptools]
+packages = [
+  "contextcanon_cli",
+  "contextcanon_config",
+  "profile_core",
+  "registry_core",
+  "mcp_server",
+]
+include-package-data = true
+
+[tool.setuptools.package-dir]
+"" = "packages"

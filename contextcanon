@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# WXT ContextCanon launcher (macOS / Linux / Git Bash on Windows).
+# Sets PYTHONPATH to the repository's packages/ directory.
+set -e
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PKG="$ROOT/packages"
+
+# Python splits PYTHONPATH with the *platform* separator, not the shell's, and
+# under Git Bash / MSYS it is still a native Windows build that also expects a
+# native path. Getting either wrong fails in a way that looks like a missing
+# module - "No module named contextcanon_cli" - rather than like a path bug, so
+# translate both the separator and the path here.
+case "$(uname -s 2>/dev/null || echo unknown)" in
+  MINGW*|MSYS*|CYGWIN*|Windows_NT)
+    SEP=';'
+    if command -v cygpath >/dev/null 2>&1; then
+      PKG="$(cygpath -w "$PKG")"
+    fi
+    ;;
+  *)
+    SEP=':'
+    ;;
+esac
+export PYTHONPATH="$PKG${SEP}${PYTHONPATH:-}"
+
+if command -v python3 >/dev/null 2>&1; then
+  exec python3 -m contextcanon_cli "$@"
+fi
+exec python -m contextcanon_cli "$@"

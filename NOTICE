@@ -1,0 +1,7 @@
+WXT ContextCanon
+Copyright 2026 Xiaotang (王小堂)
+
+This product is an original, clean-room implementation. It has no runtime
+third-party dependencies and contains no vendored or copied third-party source
+code, so there is no third-party attribution to carry here. The full audit is in
+docs/THIRD_PARTY_NOTICES.md.

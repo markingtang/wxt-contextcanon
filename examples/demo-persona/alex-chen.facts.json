@@ -1,0 +1,191 @@
+{
+  "_warning": "DEMO / SYNTHETIC. This persona is entirely fictional. No real person, device, company, address, account or identifier is represented here. Safe to publish.",
+  "subject": "demo:alex-chen",
+  "persona": "Alex Chen (fictional)",
+  "purpose": "Show what a Profile Core subject looks like: durable / temporary / scheduled facts, provenance, sensitivity levels, one supersede, one rejected conflict, one expired fact.",
+  "facts": [
+    {
+      "key": "display_name",
+      "value": "Alex Chen",
+      "sensitivity": "public",
+      "durability": "durable",
+      "provenance": { "source": "user-stated", "ref": "onboarding-chat-01", "method": "explicit-answer", "confidence": 1.0 }
+    },
+    {
+      "key": "role",
+      "value": "independent product designer",
+      "sensitivity": "public",
+      "durability": "durable",
+      "provenance": { "source": "user-stated", "ref": "onboarding-chat-01", "method": "explicit-answer", "confidence": 1.0 }
+    },
+    {
+      "key": "timezone",
+      "value": "America/Los_Angeles",
+      "sensitivity": "personal",
+      "durability": "durable",
+      "provenance": { "source": "observed", "ref": "session-clock", "method": "derived", "confidence": 0.8 }
+    },
+    {
+      "key": "preferred_language",
+      "value": "English, comfortable with Mandarin",
+      "sensitivity": "personal",
+      "durability": "durable",
+      "provenance": { "source": "user-stated", "ref": "onboarding-chat-01", "method": "explicit-answer", "confidence": 1.0 }
+    },
+    {
+      "key": "communication.style",
+      "value": "short bullets, no filler, decisions written down",
+      "sensitivity": "personal",
+      "durability": "durable",
+      "provenance": { "source": "user-stated", "ref": "prefs-2026-03", "method": "explicit-answer", "confidence": 1.0 }
+    },
+    {
+      "key": "communication.meeting_preference",
+      "value": "async first; live calls only for decisions",
+      "sensitivity": "personal",
+      "durability": "durable",
+      "provenance": { "source": "user-stated", "ref": "prefs-2026-03", "method": "explicit-answer", "confidence": 0.9 }
+    },
+    {
+      "key": "tooling.editor",
+      "value": "vscode",
+      "sensitivity": "personal",
+      "durability": "durable",
+      "provenance": { "source": "observed", "ref": "dev-machine-survey", "method": "derived", "confidence": 0.7 }
+    },
+    {
+      "key": "tooling.notes",
+      "value": "plain markdown files in a local folder",
+      "sensitivity": "personal",
+      "durability": "durable",
+      "provenance": { "source": "user-stated", "ref": "onboarding-chat-02", "method": "explicit-answer", "confidence": 1.0 }
+    },
+    {
+      "key": "tooling.package_manager",
+      "value": "pnpm",
+      "sensitivity": "personal",
+      "durability": "durable",
+      "provenance": { "source": "observed", "ref": "repo-scan", "method": "derived", "confidence": 0.6 }
+    },
+    {
+      "key": "work.focus_area",
+      "value": "design tooling prototypes",
+      "sensitivity": "public",
+      "durability": "durable",
+      "provenance": { "source": "user-stated", "ref": "onboarding-chat-01", "method": "explicit-answer", "confidence": 1.0 }
+    },
+    {
+      "key": "availability.no_calls_after",
+      "value": "21:00 local time",
+      "sensitivity": "personal",
+      "durability": "durable",
+      "provenance": { "source": "user-stated", "ref": "prefs-2026-03", "method": "explicit-answer", "confidence": 1.0 }
+    },
+    {
+      "key": "accessibility.needs",
+      "value": "high contrast UI, avoid tiny gray text",
+      "sensitivity": "sensitive",
+      "durability": "durable",
+      "provenance": { "source": "user-stated", "ref": "prefs-2026-03", "method": "explicit-answer", "confidence": 1.0 }
+    },
+    {
+      "key": "budget.tooling_monthly_usd",
+      "value": 40,
+      "sensitivity": "sensitive",
+      "durability": "durable",
+      "provenance": { "source": "user-stated", "ref": "budget-note", "method": "explicit-answer", "confidence": 0.9 }
+    },
+    {
+      "key": "secrets.policy",
+      "value": "tokens live in a local secret manager; never paste them into notes",
+      "sensitivity": "restricted",
+      "durability": "durable",
+      "provenance": { "source": "user-stated", "ref": "security-prefs", "method": "explicit-answer", "confidence": 1.0 }
+    },
+    {
+      "key": "travel.current_city",
+      "value": "Berlin",
+      "sensitivity": "personal",
+      "durability": "temporary",
+      "valid_from_offset_days": -3,
+      "valid_until_offset_days": 11,
+      "provenance": { "source": "user-stated", "ref": "trip-note", "method": "explicit-answer", "confidence": 1.0 }
+    },
+    {
+      "key": "project.current_focus",
+      "value": "onboarding flow redesign",
+      "sensitivity": "personal",
+      "durability": "temporary",
+      "valid_from_offset_days": -10,
+      "valid_until_offset_days": 20,
+      "provenance": { "source": "user-stated", "ref": "weekly-note", "method": "explicit-answer", "confidence": 0.9 }
+    },
+    {
+      "key": "availability.status",
+      "value": "heads-down, slow to reply",
+      "sensitivity": "personal",
+      "durability": "temporary",
+      "valid_from_offset_days": -1,
+      "valid_until_offset_days": 4,
+      "provenance": { "source": "observed", "ref": "calendar-scan", "method": "derived", "confidence": 0.6 }
+    },
+    {
+      "key": "routine.weekly_review",
+      "value": "Fridays 16:00 local, 30 minutes",
+      "sensitivity": "personal",
+      "durability": "scheduled",
+      "valid_from_offset_days": -60,
+      "valid_until_offset_days": 120,
+      "provenance": { "source": "document", "ref": "calendar-event-series", "method": "parsed", "confidence": 0.95 }
+    },
+    {
+      "key": "routine.backup_window",
+      "value": "Sundays 03:00 local, full snapshot",
+      "sensitivity": "personal",
+      "durability": "scheduled",
+      "valid_from_offset_days": -30,
+      "valid_until_offset_days": 150,
+      "provenance": { "source": "document", "ref": "ops-runbook", "method": "parsed", "confidence": 0.9 }
+    },
+    {
+      "key": "event.conference_attendance",
+      "value": "attending a local design meetup",
+      "sensitivity": "public",
+      "durability": "scheduled",
+      "valid_from_offset_days": 25,
+      "valid_until_offset_days": 27,
+      "provenance": { "source": "document", "ref": "ticket-confirmation", "method": "parsed", "confidence": 0.85 }
+    }
+  ],
+  "scripted": [
+    {
+      "op": "supersede",
+      "key": "tooling.editor",
+      "value": "zed",
+      "sensitivity": "personal",
+      "durability": "durable",
+      "_why": "Alex switched editors. The old value stays as a superseded revision so an agent can still see what changed and when.",
+      "provenance": { "source": "user-stated", "ref": "chat-2026-09-12", "method": "correction", "confidence": 1.0 }
+    },
+    {
+      "op": "reject",
+      "key": "timezone",
+      "value": "America/New_York",
+      "sensitivity": "personal",
+      "durability": "durable",
+      "reason": "contradicted by observed session clock; low-confidence inference",
+      "_why": "A plausible but wrong inference was rejected instead of silently overwriting the trusted value.",
+      "provenance": { "source": "inferred", "ref": "flight-booking-parse", "method": "guessed", "confidence": 0.25 }
+    },
+    {
+      "op": "expire",
+      "key": "travel.parking_permit",
+      "value": "monthly permit, zone C",
+      "sensitivity": "personal",
+      "valid_from_offset_days": -40,
+      "valid_until_offset_days": -2,
+      "_why": "A temporary fact whose window has passed. It is marked expired, not deleted, so history stays auditable.",
+      "provenance": { "source": "document", "ref": "permit-receipt", "method": "parsed", "confidence": 0.9 }
+    }
+  ]
+}

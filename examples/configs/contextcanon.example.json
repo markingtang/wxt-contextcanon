@@ -1,0 +1,36 @@
+{
+  "_comment": "Copy to ./contextcanon.json and edit. Every value is local and synthetic by default. No host, device or path from any private deployment appears here.",
+  "profile": {
+    "host": "127.0.0.1",
+    "port": 8611,
+    "database": "./data/profile.db",
+    "data_dir": "./data"
+  },
+  "registry": {
+    "device_id": "demo-device",
+    "device_role": "primary",
+    "registry_home": "./data/registry",
+    "shared_store": "./data/registry/shared.db"
+  },
+  "deploy": {
+    "project_name": "wxt-contextcanon",
+    "compose_binary": "docker compose",
+    "compose_files": ["deploy/docker/docker-compose.yml"],
+    "services": ["contextcanon-api"],
+    "lock_path": "./data/deploy.lock",
+    "backup_command": "",
+    "migration_test_command": "",
+    "smoke_command": "",
+    "deploy_command": "",
+    "health_endpoints": ["http://127.0.0.1:8611/health"],
+    "transport": "local-shell",
+    "ssh": {
+      "host_alias": "",
+      "workdir": ""
+    }
+  },
+  "server": {
+    "name": "wxt-contextcanon",
+    "version": "0.1.0"
+  }
+}

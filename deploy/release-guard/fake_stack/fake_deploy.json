@@ -1,0 +1,18 @@
+{
+  "_comment": "Fake deployment target for release-guard tests. Localhost only, no Docker, no real infrastructure.",
+  "project_name": "wxt-contextcanon-fake-stack",
+  "compose_binary": "docker compose",
+  "compose_files": [],
+  "services": ["fake-api"],
+  "lock_path": "./data/fake_deploy.lock",
+  "backup_command": "python deploy/release-guard/fake_stack/fake_backup.py",
+  "migration_test_command": "python deploy/release-guard/fake_stack/fake_migration_test.py",
+  "deploy_command": "python deploy/release-guard/fake_stack/fake_service.py --start",
+  "smoke_command": "python deploy/release-guard/fake_stack/fake_service.py --smoke",
+  "stop_command": "python deploy/release-guard/fake_stack/fake_service.py --stop",
+  "health_endpoints": ["http://127.0.0.1:8787/health"],
+  "transport": "local-shell",
+  "ssh": { "host_alias": "", "workdir": "" },
+  "health_timeout_seconds": 15,
+  "integrity_file": ""
+}

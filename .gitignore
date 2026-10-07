@@ -1,0 +1,30 @@
+# Local state (never commit)
+data/
+*.db
+*.db-journal
+contextcanon.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local scan artefacts (kept outside the repo by tools/scan_secrets.py)
+.contextcanon-private-scan/
+
+# Fake stack runtime artefacts
+deploy/release-guard/fake_stack/*.pid
+deploy/release-guard/fake_stack/backup.marker
+
+# Benchmark output is reproducible; keep reports but ignore temp runs
+benchmark/results/tmp-*

@@ -1,0 +1,23 @@
+{
+  "_warning": "SYNTHETIC FIXTURE. Fictional subject used only by the benchmark. No real person or data.",
+  "subject": "bench:synthetic",
+  "facts": [
+    { "key": "display_name", "value": "Sam Rivera", "sensitivity": "public", "durability": "durable",
+      "provenance": { "source": "user-stated", "confidence": 1.0 } },
+    { "key": "timezone", "value": "Europe/Lisbon", "sensitivity": "personal", "durability": "durable",
+      "provenance": { "source": "observed", "confidence": 0.8 } },
+    { "key": "tooling.editor", "value": "vscode", "sensitivity": "personal", "durability": "durable",
+      "provenance": { "source": "observed", "confidence": 0.7 } },
+    { "key": "communication.style", "value": "bullets", "sensitivity": "personal", "durability": "durable",
+      "provenance": { "source": "user-stated", "confidence": 1.0 } },
+    { "key": "travel.current_city", "value": "Porto", "sensitivity": "personal", "durability": "temporary",
+      "valid_from_offset_days": -2, "valid_until_offset_days": 8,
+      "provenance": { "source": "user-stated", "confidence": 1.0 } }
+  ],
+  "scripted": [
+    { "op": "supersede", "key": "tooling.editor", "value": "zed",
+      "provenance": { "source": "user-stated", "method": "correction", "confidence": 1.0 } },
+    { "op": "reject", "key": "timezone", "value": "America/New_York",
+      "provenance": { "source": "inferred", "method": "guessed", "confidence": 0.25 } }
+  ]
+}
