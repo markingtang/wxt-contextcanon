@@ -7,6 +7,9 @@ time-bounded claim about a subject, with an explicit lifecycle.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+import json
+import math
 from typing import Any, Dict, Optional
 
 SENSITIVITY_LEVELS = ("public", "personal", "sensitive", "restricted")
@@ -99,6 +102,10 @@ class Fact:
 
 
 def validate_fact_input(value: Any, sensitivity: str, durability: str) -> None:
+    try:
+        json.dumps(value, allow_nan=False)
+    except (TypeError, ValueError):
+        raise ValueError("value must be finite JSON data") from None
     if value is None:
         raise ValueError("value must not be null (use an empty string instead)")
     if sensitivity not in SENSITIVITY_LEVELS:
@@ -109,3 +116,28 @@ def validate_fact_input(value: Any, sensitivity: str, durability: str) -> None:
         raise ValueError(
             "durability must be one of %s, got %r" % (list(DURABILITY_KINDS), durability)
         )
+
+
+def normalize_timestamp(value: str) -> str:
+    """Canonical UTC seconds make SQLite text comparisons timezone-correct."""
+    if not isinstance(value, str):
+        raise ValueError("timestamp must be an ISO string with timezone")
+    try:
+        stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if stamp.tzinfo is None:
+            raise ValueError()
+        return stamp.astimezone(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+    except (ValueError, OverflowError):
+        raise ValueError("timestamp must be an ISO string with timezone") from None
+
+
+def validate_identity(subject: str, key: str) -> None:
+    if not isinstance(subject, str) or not subject.strip():
+        raise ValueError("subject must be a non-empty string")
+    if not isinstance(key, str) or not key.strip():
+        raise ValueError("key must be a non-empty string")
+
+
+def validate_score(value: float) -> None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1:
+        raise ValueError("confidence and certainty must be finite numbers between 0 and 1")

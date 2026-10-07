@@ -28,3 +28,11 @@ deploy/release-guard/fake_stack/backup.marker
 
 # Benchmark output is reproducible; keep reports but ignore temp runs
 benchmark/results/tmp-*
+
+# Optional MCP interoperability tooling
+.mcp-test/
+*.db-wal
+*.db-shm
+
+# Local pip cache (never public source)
+/pip/cache/

@@ -40,7 +40,7 @@ def run(cmd: List[str], cwd: str, env: Dict[str, str], stdin_data: str = "") -> 
     try:
         completed = subprocess.run(
             cmd, cwd=cwd, env=env, input=stdin_data,
-            capture_output=True, text=True, timeout=180,
+            capture_output=True, text=True, encoding="utf-8", timeout=180,
         )
     except subprocess.TimeoutExpired:
         return {"ok": False, "error": "timeout", "stdout": "", "stderr": ""}
@@ -204,12 +204,13 @@ def main() -> int:
     if args.watch:
         after_watch = {p: prove_isolation.snapshot(p) for p in args.watch}
         changed = [p for p in args.watch
-                   if (before_watch.get(p) or {}).get("digest") != (after_watch.get(p) or {}).get("digest")]
-        step("production_untouched", not changed, watched=args.watch, changed=changed)
+                   if before_watch.get(p) is None or after_watch.get(p) is None
+                   or before_watch[p]["digest"] != after_watch[p]["digest"]]
+        step("watched_directory_unchanged", not changed, watched=args.watch, changed=changed)
     else:
         # No --watch target was supplied, so nothing was actually observed.
         # Report NOT_CHECKED rather than a green PASS that watched nothing.
-        steps.append({"step": "production_untouched", "status": "NOT_CHECKED",
+        steps.append({"step": "watched_directory_unchanged", "status": "NOT_CHECKED",
                       "reason": "no --watch directory supplied"})
 
     # 12. state stayed inside the clone
@@ -240,8 +241,8 @@ def _finish(steps: List[Dict[str, Any]], base: str, args: Any, verdict: str,
             cleanup: bool = True) -> int:
     report = {
         "CLEAN_HOME_INSTALL": verdict,
-        "PRODUCTION_UNTOUCHED": "CHECKED" if any(
-            s["step"] == "production_untouched" and s["status"] in ("PASS", "FAIL") for s in steps
+        "WATCHED_METADATA": "CHECKED" if any(
+            s["step"] == "watched_directory_unchanged" and s["status"] in ("PASS", "FAIL") for s in steps
         ) else "NOT_CHECKED",
         "steps": steps,
         "passed": sum(1 for s in steps if s["status"] == "PASS"),

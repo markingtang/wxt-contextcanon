@@ -1,140 +1,111 @@
-# Quickstart — local, no Docker
+# Five-minute local Quickstart
 
-Target: running in about 10 minutes, understanding it in 10 more. If this page fails on
-your machine, that is a bug — please open an issue.
+Requirements: Git and Python 3.9+ with SQLite. Check `python --version` on Windows;
+Linux/macOS may call it `python3`. No package installation, Docker, account, or API key
+is needed. Use a new clone for the synthetic demo; `--reset` replaces demo state.
 
-## 0. Requirements
+## Get the code (all shells)
 
-- Python 3.9 or newer (`python --version`)
-- SQLite (bundled with Python)
-- Git
-
-That is all. No `pip install` is required.
-
-## 1. Get the code
-
-```bash
-git clone https://github.com/markingtang/wxt-contextcanon.git wxt-contextcanon
+```text
+git clone https://github.com/markingtang/wxt-contextcanon.git
 cd wxt-contextcanon
 ```
 
-## 2. Pick your launcher
+## Run in your shell
 
-| Platform | Command |
-|---|---|
-| macOS / Linux / Git Bash | `./contextcanon <args>` |
-| Windows cmd / PowerShell | `contextcanon.cmd <args>` |
-| Anywhere | `PYTHONPATH=packages python -m contextcanon_cli <args>` |
+Choose ONE complete block below. Each starts from the repository directory.
+PowerShell needs `.\`; CMD can use the filename; Bash needs `./`.
+The Bash launcher selects `python3` or `python` automatically.
 
-The wrappers only set `PYTHONPATH`. Use the explicit form if a wrapper misbehaves.
+## Windows PowerShell
 
-## 3. Verify
+```powershell
+.\contextcanon.cmd doctor
+.\contextcanon.cmd demo seed --reset
+.\contextcanon.cmd profile get --subject demo:alex-chen --key tooling.editor
+.\contextcanon.cmd profile set --subject demo:alex-chen --key demo.score --value 42 --source user-stated
+.\contextcanon.cmd profile history --subject demo:alex-chen --key tooling.editor
+.\contextcanon.cmd profile as-of --subject demo:alex-chen --days-ago 30
+.\contextcanon.cmd registry demo --reset
+.\contextcanon.cmd benchmark smoke
+.\contextcanon.cmd guard plan
+```
+
+## Windows CMD
+
+```cmd
+contextcanon.cmd doctor
+contextcanon.cmd demo seed --reset
+contextcanon.cmd profile get --subject demo:alex-chen --key tooling.editor
+contextcanon.cmd profile set --subject demo:alex-chen --key demo.score --value 42 --source user-stated
+contextcanon.cmd profile history --subject demo:alex-chen --key tooling.editor
+contextcanon.cmd profile as-of --subject demo:alex-chen --days-ago 30
+contextcanon.cmd registry demo --reset
+contextcanon.cmd benchmark smoke
+contextcanon.cmd guard plan
+```
+
+## Windows Git Bash
 
 ```bash
-contextcanon doctor
+./contextcanon doctor
+./contextcanon demo seed --reset
+./contextcanon profile get --subject demo:alex-chen --key tooling.editor
+./contextcanon profile set --subject demo:alex-chen --key demo.score --value 42 --source user-stated
+./contextcanon profile history --subject demo:alex-chen --key tooling.editor
+./contextcanon profile as-of --subject demo:alex-chen --days-ago 30
+./contextcanon registry demo --reset
+./contextcanon benchmark smoke
+./contextcanon guard plan
 ```
 
-You should see your Python version, SQLite version, and the paths where state will live
-(all inside the repository). If `ok` is `false`, read the `problems` list.
+## Linux / macOS
 
-## 4. Load the demo persona
-
-```bash
-contextcanon demo seed --reset
+```sh
+./contextcanon doctor
+./contextcanon demo seed --reset
+./contextcanon profile get --subject demo:alex-chen --key tooling.editor
+./contextcanon profile set --subject demo:alex-chen --key demo.score --value 42 --source user-stated
+./contextcanon profile history --subject demo:alex-chen --key tooling.editor
+./contextcanon profile as-of --subject demo:alex-chen --days-ago 30
+./contextcanon registry demo --reset
+./contextcanon benchmark smoke
+./contextcanon guard plan
 ```
 
-This creates `demo:alex-chen`, a **fictional** subject with 20+ synthetic facts. It
-includes, on purpose:
+## Expected results
 
-- durable, temporary and scheduled facts
-- one supersede (`tooling.editor`: `vscode` → `zed`)
-- one rejected conflict (a low-confidence inference about `timezone`)
-- one expired fact (a permit whose window passed)
-- provenance and sensitivity on every fact
+- Doctor: `ok: true`.
+- Seed: fictional `demo:alex-chen`, no imported personal data.
+- Current editor: `zed`; history: `vscode` then `zed`.
+- Writing `demo.score` creates the number 42, with a source.
+- Thirty days ago: editor `vscode`. The relative date keeps working in future years.
+- Registry: `idempotent: true`, pending outbox 0. Both devices are logical IDs in one database.
+- Benchmark: 7/7 for ContextCanon; the deliberately simple Markdown baseline scores 3/7.
+- Guard: `outcome: planned`. No deployment, baseline write, or lock creation.
 
-## 5. Read and write
+Default data is under `./data` relative to the working directory. Existing
+`contextcanon.json` or `WXT_CONTEXTCANON_*` overrides can select other paths; inspect
+`config show` before using real data. Facts and audit records are stored in plaintext.
+Sensitivity labels do not hide data from connected agents.
 
-```bash
-contextcanon profile get    --subject demo:alex-chen --key tooling.editor     # zed
-contextcanon profile history --subject demo:alex-chen --key tooling.editor    # vscode -> zed
-contextcanon profile search --subject demo:alex-chen --query editor
-contextcanon profile set    --subject demo:alex-chen --key demo.note --value "\"it works\""
-contextcanon profile lifecycle --subject demo:alex-chen
-```
+## Optional installation
 
-## 6. Time travel
+Inside a virtual environment, `python -m pip install .` installs the `contextcanon`
+command and its demo/benchmark/guard assets. Editable development installation is
+`python -m pip install -e .`. No runtime packages are required; pip fetches the build
+backend. The source launchers above need neither pip nor an activated environment.
+Use a fresh working directory to choose where installed commands keep their local data.
 
-```bash
-contextcanon profile as-of --subject demo:alex-chen --at 2026-01-01T00:00:00Z
-```
+## Connect an Agent
 
-Durable facts in the demo are back-dated, so a timestamp in the past returns the
-superseded `vscode` rather than today's `zed`. This is the single biggest difference from
-a text file.
+Follow [MCP client setup](../MCP_TOOLS.md#client-configuration). MCP waits for protocol
+messages on stdin, so launching `mcp` by hand appears idle; it is not an interactive prompt.
+The client must use the same explicit database paths to see the facts you seeded.
+No ChatGPT chat history or other platform history is automatically imported.
 
-## 7. Registry demo
+## Verify this tutorial
 
-```bash
-contextcanon registry demo --reset
-```
-
-Runs a scripted story: a device registers, declares a task, writes files, a second
-**logical** device (same process, same local database — not a second computer) queues
-work while "offline", both reconnect, the same work is delivered twice and is skipped the
-second time, and the index is rebuilt from the event log.
-
-## 8. Benchmark
-
-```bash
-contextcanon benchmark smoke          # 7-case subset of the full 9
-contextcanon benchmark run            # all 9 cases, compares against a Markdown baseline
-```
-
-Full suite: WXT ContextCanon 9/9, Markdown 3/9. Smoke subset: WXT ContextCanon 7/7, Markdown 3/7. Deterministic
-and synthetic. No LLM judge. The Markdown baseline is expected to pass the simple cases.
-
-## 9. MCP
-
-```bash
-contextcanon mcp                      # stdio server; Ctrl-C to exit
-```
-
-Add it to your MCP client with the snippet in `README.md`.
-
-## 10. Release guard (optional)
-
-```bash
-contextcanon guard plan                                   # dry run, always safe
-contextcanon guard apply --intent "first fake deployment"  # runs the fake stack locally
-```
-
-`plan` never changes anything. `apply` requires an `--intent` string, takes a lock, and
-aborts on any failed step.
-
-## Starting over
-
-```bash
-rm -rf data
-contextcanon demo seed --reset
-```
-
-## Troubleshooting
-
-| Symptom | Fix |
-|---|---|
-| `ModuleNotFoundError: contextcanon_cli` | Use `PYTHONPATH=packages python -m contextcanon_cli ...` |
-| `demo persona not found` | Run from the repository root |
-| `another deployment holds the lock` | A previous guard run crashed; delete `data/*.lock` |
-| Health check fails in `guard apply` | The fake service did not start; check port 8787 is free |
-| Permission error creating `./data` | Clone somewhere your user can write |
-
-## Where state lives
-
-```
-data/
-  profile.db
-  registry/shared.db
-  *.lock                 (only during a guard run)
-```
-
-Nothing outside the repository is read or written.
+`python tools/check_quickstart.py` executes the applicable blocks in isolated synthetic
+storage and asserts the results. Windows checks PowerShell, CMD and Git Bash; Unix checks
+Bash. A missing shell is reported as SKIP, not PASS. macOS is not part of CI.

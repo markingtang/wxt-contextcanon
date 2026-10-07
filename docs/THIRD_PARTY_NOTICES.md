@@ -37,7 +37,7 @@ redistribute.
 
 ## 2. Test / tooling dependencies
 
-**None.** `tests/run_all.py` uses `unittest`; the scanner, the isolation proof and the
+**Unit tests: none.** `tests/run_all.py` uses `unittest`; the scanner, the isolation proof and the
 acceptance runner use the standard library.
 
 ## 3. Optional build/runtime environment
@@ -111,3 +111,8 @@ None. The repository contains no binary assets.
 
 Re-run this audit if any of these change: `pyproject.toml` gains a dependency; a file is
 copied from another project; a Docker image is published; a data fixture is imported.
+
+The optional interoperability check uses official MCP Inspector 2.9.0 and
+@modelcontextprotocol/client 2.3.1 (licenses supplied by the respective packages),
+installed into an isolated tooling directory. They and their transitive packages are
+not vendored or runtime dependencies. Wheel building uses setuptools (MIT).

@@ -1,6 +1,7 @@
 """Run the whole test suite: `python tests/run_all.py`."""
 
 import os
+import json
 import sys
 import unittest
 import warnings
@@ -17,6 +18,10 @@ def main() -> int:
     suite = loader.discover(tests_dir, pattern="test_*.py", top_level_dir=tests_dir)
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
+    print(json.dumps({"PASS": result.testsRun - len(result.failures) - len(result.errors) - len(result.skipped) - len(result.expectedFailures),
+                      "FAIL": len(result.failures) + len(result.errors) + len(result.unexpectedSuccesses),
+                      "SKIP": len(result.skipped), "EXPECTED_FAILURE": len(result.expectedFailures),
+                      "BLOCKED": 0, "TOTAL": result.testsRun}))
     return 0 if result.wasSuccessful() else 1
 
 

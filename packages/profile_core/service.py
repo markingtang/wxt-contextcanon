@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
+from functools import wraps
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -16,7 +17,7 @@ from .model import (
     CONFLICT_POLICIES,
     Fact,
     Provenance,
-    validate_fact_input,
+    validate_fact_input, normalize_timestamp, validate_identity, validate_score,
 )
 from .store import ProfileStore
 
@@ -47,6 +48,20 @@ def unique_nonce() -> str:
     return uuid.uuid4().hex
 
 
+def atomic_write(method):
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        self.store.conn.execute("BEGIN IMMEDIATE")
+        try:
+            result = method(self, *args, **kwargs)
+            self.store.conn.commit()
+            return result
+        except BaseException:
+            self.store.conn.rollback()
+            raise
+    return wrapped
+
+
 class ProfileService:
     def __init__(self, store: ProfileStore, actor: str = "system"):
         self.store = store
@@ -54,6 +69,7 @@ class ProfileService:
 
     # ------------------------------------------------------------------ write
 
+    @atomic_write
     def upsert_fact(
         self,
         subject: str,
@@ -78,23 +94,36 @@ class ProfileService:
             reject    - incoming claim is stored with status 'rejected'
             keep      - existing active fact wins, nothing is written
         """
+        validate_identity(subject, key)
         validate_fact_input(value, sensitivity, durability)
+        validate_score(certainty)
+        valid_from = normalize_timestamp(valid_from) if valid_from is not None else None
+        valid_until = normalize_timestamp(valid_until) if valid_until is not None else None
         if on_conflict not in CONFLICT_POLICIES:
             raise ValueError("on_conflict must be one of %s" % (list(CONFLICT_POLICIES),))
 
         actor = actor or self.actor
-        at = now_iso()
+        at = normalize_timestamp(now_iso())
+        if valid_until and valid_until <= (valid_from or at):
+            raise ValueError("valid_until must be after valid_from")
         existing = self.store.current_fact(subject, key, at)
         prov = Provenance.from_dict(provenance)
+        validate_score(prov.confidence)
 
-        if existing is not None and _same_value(existing["value"], value):
+        if (existing is not None and _same_value(existing["value"], value)
+                and existing["sensitivity"] == sensitivity and existing["durability"] == durability
+                and existing["certainty"] == certainty
+                and (valid_from is None or normalize_timestamp(existing["valid_from"]) == valid_from)
+                and (normalize_timestamp(existing["valid_until"]) if existing["valid_until"] else None) == valid_until):
             # Idempotent re-statement: refresh provenance, do not create noise.
             self.store.update_fact_fields(
                 existing["fact_id"], provenance=prov.to_dict(), updated_at=at
             )
+            self.store.upsert_source(prov.source, prov.source, prov.confidence, prov.method)
             self.store.append_event(
                 existing["fact_id"], subject, "fact.reasserted", actor, at,
-                {"key": key, "value": value},
+                {"key": key, "value": value, "previous_provenance": existing["provenance"],
+                 "provenance": prov.to_dict()},
             )
             self.store.commit()
             return {"action": "unchanged", "fact": self.store.get_fact(existing["fact_id"])}
@@ -118,9 +147,10 @@ class ProfileService:
         elif is_conflict:
             supersedes = existing["fact_id"]
 
-        prior_revisions = [
-            f for f in self.store.list_subject(subject, include_inactive=True) if f["key"] == key
-        ]
+        prior_revision = self.store.conn.execute(
+            "SELECT COALESCE(MAX(revision), 0) FROM facts WHERE subject = ? AND key = ?",
+            (subject, key),
+        ).fetchone()[0]
         new_id = fact_id or make_fact_id(subject, key, value, nonce or unique_nonce())
 
         fact = Fact(
@@ -135,7 +165,7 @@ class ProfileService:
             valid_from=valid_from or at,
             valid_until=valid_until,
             provenance=prov,
-            revision=len(prior_revisions) + 1,
+            revision=prior_revision + 1,
             supersedes=supersedes,
             conflicts_with=conflicts_with,
             created_at=at,
@@ -198,6 +228,7 @@ class ProfileService:
             actor=actor or self.actor,
         )
 
+    @atomic_write
     def reject_conflict(
         self, fact_id: str, reason: str = "contradicted by trusted source", actor: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -214,14 +245,15 @@ class ProfileService:
         self.store.commit()
         return {"action": "rejected", "fact": self.store.get_fact(fact_id), "reason": reason}
 
+    @atomic_write
     def expire_due_facts(self, now: Optional[str] = None, actor: Optional[str] = None) -> List[Dict[str, Any]]:
         """Move facts whose valid_until has passed to 'expired' (never delete)."""
-        now = now or now_iso()
+        now = normalize_timestamp(now or now_iso())
         expired: List[Dict[str, Any]] = []
         for fact in self.store.all_facts():
             if fact["status"] != ACTIVE:
                 continue
-            if fact.get("valid_until") and str(fact["valid_until"]) <= now:
+            if fact.get("valid_until") and normalize_timestamp(fact["valid_until"]) <= now:
                 at = now
                 self.store.set_status(fact["fact_id"], EXPIRED)
                 self.store.update_fact_fields(fact["fact_id"], updated_at=at)
@@ -263,6 +295,8 @@ class ProfileService:
 
     def search(self, subject: str, query: str, limit: int = 20) -> List[Dict[str, Any]]:
         """Substring search over the facts that are current right now."""
+        if not isinstance(query, str) or not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 1000:
+            raise ValueError("query must be a string and limit must be between 1 and 1000")
         needle = query.lower()
         out: List[Dict[str, Any]] = []
         for fact in self.store.facts_effective_at(subject, now_iso()):
@@ -340,6 +374,8 @@ def _same_value(left: Any, right: Any) -> bool:
     """
     if _value_kind(left) != _value_kind(right):
         return False
+    if isinstance(left, (list, dict)):
+        return json.dumps(left, sort_keys=True, allow_nan=False) == json.dumps(right, sort_keys=True, allow_nan=False)
     return left == right
 
 

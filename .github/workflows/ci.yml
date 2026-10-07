@@ -1,0 +1,67 @@
+name: public-quality
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  python:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.9', '3.13']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Actual clone has origin
+        run: git remote get-url origin
+      - name: Unit and integration tests
+        run: python tests/run_all.py
+      - name: Copy-and-run Quickstart
+        run: python tools/check_quickstart.py
+      - name: Fresh virtual environment and installed wheel
+        run: python tools/check_install.py
+      - name: Working-tree privacy gate
+        run: python tools/scan_secrets.py
+      - name: Reachable Git history privacy gate
+        run: python tools/scan_secrets.py --history
+      - name: Prepare synthetic watch
+        run: python -c "from pathlib import Path; p=Path('data/synthetic-watch'); p.mkdir(parents=True,exist_ok=True); (p/'sentinel').write_text('synthetic')"
+      - name: Static isolation baseline
+        run: python tools/prove_isolation.py --watch data/synthetic-watch --json data/isolation-before.json
+      - name: Fresh HOME and cloned source acceptance
+        run: python tools/accept_clean_home.py --watch data/synthetic-watch
+      - name: Isolation comparison
+        run: python tools/prove_isolation.py --compare-snapshot data/isolation-before.json
+      - name: Full benchmark
+        run: python benchmark/runner/run.py run
+      - name: Smoke benchmark
+        run: python benchmark/runner/run.py smoke
+  mcp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Optional official test clients
+        run: npm install --prefix .mcp-test --no-audit --no-fund --ignore-scripts @modelcontextprotocol/inspector@2.9.0 @modelcontextprotocol/client@2.3.1
+      - name: Real stdio sessions (legacy and auto fallback)
+        run: node tools/check_mcp_client.mjs .mcp-test

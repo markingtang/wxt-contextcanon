@@ -2,17 +2,24 @@
   "_comment": "Every value here is configuration. No host, project, container or path from any private system is baked into this file.",
   "project_name": "wxt-contextcanon",
   "compose_binary": "docker compose",
-  "compose_files": ["deploy/docker/docker-compose.yml"],
-  "services": ["contextcanon-api"],
+  "compose_files": [
+    "deploy/docker/docker-compose.yml"
+  ],
+  "services": [
+    "contextcanon-api"
+  ],
   "lock_path": "./data/deploy.lock",
   "backup_command": "",
   "migration_test_command": "",
   "deploy_command": "",
   "smoke_command": "",
   "stop_command": "",
-  "health_endpoints": ["http://127.0.0.1:8611/health"],
+  "health_endpoints": [],
   "transport": "local-shell",
-  "ssh": { "host_alias": "", "workdir": "" },
+  "ssh": {
+    "host_alias": "",
+    "workdir": ""
+  },
   "health_timeout_seconds": 20,
   "integrity_file": "./data/deploy-integrity.json"
 }

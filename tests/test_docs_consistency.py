@@ -53,7 +53,7 @@ def all_markdown() -> list:
     out = []
     for dirpath, dirnames, filenames in os.walk(ROOT):
         dirnames[:] = [d for d in dirnames
-                       if d not in (".git", "__pycache__", "data")
+                       if d not in (".git", "__pycache__", "data", "pip", "build", "dist", ".mcp-test", "build", "dist", ".mcp-test")
                        and not os.path.join(dirpath, d).endswith(os.path.join("benchmark", "results"))]
         for name in filenames:
             if name.endswith(".md"):
@@ -96,7 +96,11 @@ def mcp_tool_names() -> list:
     from mcp_server.server import build_server
     tmp = tempfile.mkdtemp(prefix="contextcanon-docs-check-")
     try:
-        return sorted(build_server(None, tmp).tools.keys())
+        server = build_server(None, tmp)
+        try:
+            return sorted(server.tools.keys())
+        finally:
+            server.close()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -133,9 +137,10 @@ class DocsConsistencyTests(unittest.TestCase):
                          "a public document must not hard-code a commit count:\n%s"
                          % "\n".join(offenders))
 
-    def test_no_remotes_and_no_merges(self):
-        self.assertEqual(git("remote"), "", "a remote must not exist")
-        self.assertEqual(git("log", "--merges", "--oneline"), "", "no merge commits allowed")
+    def test_public_distribution_files_exist(self):
+        # A public clone has origin; forks and normal merges are supported.
+        for name in ("README.md", "LICENSE", "NOTICE", "TRADEMARKS.md", "pyproject.toml"):
+            self.assertTrue(os.path.isfile(os.path.join(ROOT, name)), name)
 
     # -------------------------------------------------------- benchmark counts
 

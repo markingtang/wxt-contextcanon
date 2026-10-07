@@ -74,7 +74,7 @@ GENERIC_PATTERNS: List[Tuple[str, str, str]] = [
 
 ALLOW_PREFIX = "WXT_SCAN_ALLOW:"
 
-SKIP_DIRS = {".git", "__pycache__", "data", ".venv", "venv", "node_modules", ".contextcanon-private-scan"}
+SKIP_DIRS = {".git", "__pycache__", "data", "pip", "build", "dist", ".mcp-test", ".venv", "venv", "node_modules", ".contextcanon-private-scan"}
 SKIP_SUFFIXES = (".db", ".lock", ".pyc", ".pid", ".png", ".ico", ".woff", ".woff2", ".ttf")
 MAX_FILE_BYTES = 2_000_000
 

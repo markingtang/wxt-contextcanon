@@ -1,0 +1,3 @@
+recursive-include examples *.json *.md
+recursive-include benchmark *.py *.json *.md
+recursive-include deploy *.py *.json *.yml *.md

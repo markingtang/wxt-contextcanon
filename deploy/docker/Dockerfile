@@ -11,6 +11,4 @@ COPY . /app
 # Standard library only - nothing to install.
 RUN python -c "import sys; print('python', sys.version.split()[0])"
 
-EXPOSE 8611
-
 CMD ["python", "-m", "contextcanon_cli", "doctor"]

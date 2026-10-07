@@ -12,6 +12,9 @@ from registry_core import RegistryService, RegistryStore
 
 def repo_root() -> str:
     """<repo>/packages/contextcanon_cli -> <repo>"""
+    assets = os.path.join(os.path.dirname(__file__), "_assets")
+    if os.path.isdir(assets):
+        return assets
     return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 

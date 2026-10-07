@@ -4,7 +4,7 @@ description: >
   Use WXT ContextCanon when an agent needs to recall, update, or search a shared personal
   context (Profile Core), or when it is about to create/modify/delete files and
   needs mutation intent and a shared file-state ledger (Registry Core).
-version: 0.1.0
+version: 0.1.1
 ---
 
 # WXT ContextCanon - shared context and file-state ledger
@@ -45,24 +45,25 @@ their desktop are synchronised; that transport does not exist yet.
 4. **Declare mutation intent before writing files.** `begin` … `end` around any
    batch of file changes.
 5. **Prefer `valid_until` over deletion.** Time-limited facts expire on their
-   own and stay auditable.
+   own in reads and stay auditable; run the CLI expire sweep to update stored status.
 6. **Sensitivity is a first-class field.** If a fact is `sensitive` or
-   `restricted`, do not surface it in summaries or logs.
+   `restricted`, do not surface it in summaries or logs. This is an agent instruction,
+   not enforced access control; MCP exposes all labels to a trusted caller.
 
 ## Minimal usage
 
 ```bash
-contextcanon profile get    --subject demo:alex-chen --key timezone
-contextcanon profile search --subject demo:alex-chen --query "editor"
-contextcanon profile set    --subject demo:alex-chen --key tooling.editor --value zed \
+./contextcanon profile get    --subject demo:alex-chen --key timezone
+./contextcanon profile search --subject demo:alex-chen --query "editor"
+./contextcanon profile set    --subject demo:alex-chen --key tooling.editor --value zed \
                     --source user-stated --durability durable
-contextcanon profile as-of  --subject demo:alex-chen --at 2026-01-01T00:00:00Z
+./contextcanon profile as-of  --subject demo:alex-chen --days-ago 30
 
-contextcanon registry begin --task-id t-1 --intent "reorganise notes" --targets notes/a.md
-contextcanon registry event --kind file.upsert --object-key notes/a.md --checksum abc123
-contextcanon registry end   --task-id t-1 --result ok --changed notes/a.md
-contextcanon registry query --object-key notes/a.md
-contextcanon registry recover
+./contextcanon registry begin --task-id t-1 --intent "reorganise notes" --targets notes/a.md
+./contextcanon registry event --kind file.upsert --object-key notes/a.md --checksum abc123
+./contextcanon registry end   --task-id t-1 --result ok --changed notes/a.md
+./contextcanon registry query --object-key notes/a.md
+./contextcanon registry recover
 ```
 
 ## The 8 MCP tools
@@ -78,3 +79,7 @@ Supersede and conflict resolution are parameters of `profile_upsert`
 No governance charters, no schema dumps, no deployment rules. Those live in
 `docs/` and in the CLI. If you need a rule that is not in the six above, it
 belongs in the codebase, not in this file.
+
+Shell examples on this page use Bash from the repository root. For PowerShell use
+`.\contextcanon.cmd`; for CMD use `contextcanon.cmd`. The complete platform-specific
+steps are in [Quickstart](../../docs/quickstart/local.md).

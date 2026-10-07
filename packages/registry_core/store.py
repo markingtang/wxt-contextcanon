@@ -114,17 +114,19 @@ class RegistryStore:
         stream: str = "default",
     ) -> int:
         """Append-only, idempotent by event_id. Returns the sequence number."""
-        cur = self.conn.execute("SELECT seq FROM events WHERE event_id = ?", (event_id,))
-        row = cur.fetchone()
-        if row:
-            return int(row["seq"])
-        cur = self.conn.execute(
-            "INSERT INTO events (event_id, device_id, stream, kind, ts, payload) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (event_id, device_id, stream, kind, ts, json.dumps(payload or {}, ensure_ascii=False, sort_keys=True)),
-        )
-        self.conn.commit()
-        return int(cur.lastrowid)
+        encoded = json.dumps(payload if payload is not None else {}, ensure_ascii=False, sort_keys=True, allow_nan=False)
+        with self.conn:
+            self.conn.execute("BEGIN IMMEDIATE")
+            row = self.conn.execute("SELECT * FROM events WHERE event_id = ?", (event_id,)).fetchone()
+            if row:
+                if (row["device_id"], row["kind"], row["stream"], row["payload"]) != (device_id, kind, stream, encoded):
+                    raise ValueError("event_id already exists with different content")
+                return int(row["seq"])
+            cur = self.conn.execute(
+                "INSERT INTO events (event_id, device_id, stream, kind, ts, payload) VALUES (?, ?, ?, ?, ?, ?)",
+                (event_id, device_id, stream, kind, ts, encoded),
+            )
+            return int(cur.lastrowid)
 
     def events_since(self, seq: int, limit: int = 1000) -> List[Dict[str, Any]]:
         cur = self.conn.execute(
@@ -296,7 +298,7 @@ class RegistryStore:
         try:
             data["payload"] = json.loads(data["payload"])
         except (TypeError, ValueError):
-            data["payload"] = {}
+            raise ValueError("corrupt registry event JSON") from None
         return data
 
     @staticmethod

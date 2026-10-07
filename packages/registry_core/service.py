@@ -41,6 +41,22 @@ def checksum_of(payload: Any) -> str:
     return hashlib.sha256(blob).hexdigest()[:16]
 
 
+def validate_event(kind, payload):
+    if not isinstance(kind, str) or not kind.strip():
+        raise ValueError("event kind must be a non-empty string")
+    if not isinstance(payload, dict):
+        raise ValueError("event payload must be an object")
+    if kind.startswith("file.") and kind not in FILE_KINDS:
+        raise ValueError("unsupported file event kind")
+    if kind in FILE_KINDS:
+        if not isinstance(payload.get("object_key"), str) or not payload["object_key"].strip():
+            raise ValueError("file event requires a non-empty object_key")
+        if kind == "file.move" and (not isinstance(payload.get("to"), str) or not payload["to"].strip()):
+            raise ValueError("file.move requires a non-empty to destination")
+    if "state" in payload and not isinstance(payload["state"], dict):
+        raise ValueError("event state must be an object")
+
+
 class RegistryService:
     def __init__(self, store: RegistryStore, device_id: str = "demo-device", device_role: str = "primary"):
         self.store = store
@@ -80,7 +96,8 @@ class RegistryService:
         event_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         device_id = device_id or self.device_id
-        payload = payload or {}
+        payload = {} if payload is None else payload
+        validate_event(kind, payload)
         # A fresh uuid is part of every generated id: two identical events in the
         # same second must not collapse into one, and an id must not be derivable
         # from kind + payload + a second-granular timestamp.
@@ -127,39 +144,34 @@ class RegistryService:
         appended when the work was created). Draining delivers them into the
         projection; it must not insert a second ledger copy.
         """
-        applied = 0
-        skipped = 0
-        failed = 0
+        applied = skipped = failed = 0
         for item in self.store.pending_outbox(limit):
             event_id = item["outbox_id"]
             try:
-                if self.store.already_applied(event_id):
+                validate_event(item["kind"], item["payload"])
+                # append_event verifies identity even on duplicate delivery.
+                self.store.append_event(event_id, item["device_id"], item["kind"],
+                                        item["created_at"], item["payload"])
+                was_applied = self.store.already_applied(event_id)
+                self.apply_all()
+                if not self.store.already_applied(event_id):
+                    raise ValueError("event projection failed")
+                if was_applied:
                     skipped += 1
                 else:
-                    if not self.store.has_event(event_id):
-                        # Only reachable for work queued directly into the outbox
-                        # without a matching ledger row; keep it append-once.
-                        self.store.append_event(
-                            event_id, item["device_id"], item["kind"], now_iso(), item["payload"]
-                        )
-                    self._apply_event(
-                        {"event_id": event_id, "device_id": item["device_id"], "kind": item["kind"],
-                         "payload": item["payload"], "ts": now_iso()}
-                    )
-                    self.store.mark_applied(event_id, now_iso())
                     applied += 1
                 self.store.mark_outbox(event_id, "done", "", now_iso())
-            except Exception as exc:  # fail-closed: leave pending for next attempt
+            except Exception:
                 failed += 1
-                self.store.mark_outbox(event_id, "pending", str(exc), now_iso())
-        self.store.commit()
+                self.store.mark_outbox(event_id, "pending", "event validation or projection failed", now_iso())
         return {"applied": applied, "skipped": skipped, "failed": failed}
 
     # ------------------------------------------------------------ projection
 
     def _apply_event(self, event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         kind = event["kind"]
-        payload = event["payload"] or {}
+        payload = event["payload"]
+        validate_event(kind, payload)
         device_id = event["device_id"]
         object_key = payload.get("object_key")
         if not object_key:
@@ -188,73 +200,38 @@ class RegistryService:
         return {"object_key": object_key, "state": state, "version": version}
 
     def apply_all(self) -> int:
-        count = 0
-        for event in self.store.all_events():
-            if self.store.already_applied(event["event_id"]):
-                continue
-            try:
+        # Keep index updates and idempotency markers in one writer transaction.
+        with self.store.conn:
+            self.store.conn.execute("BEGIN IMMEDIATE")
+            count = 0
+            for event in self.store.all_events():
+                if self.store.already_applied(event["event_id"]):
+                    continue
                 self._apply_event(event)
-            except Exception:
-                # fail-closed: a malformed event is not applied and not marked
-                # applied, so it can never be reported as a success.
-                continue
-            self.store.mark_applied(event["event_id"], now_iso())
-            count += 1
-        self.store.commit()
+                self.store.mark_applied(event["event_id"], now_iso())
+                count += 1
         return count
 
     def rebuild_shared_index(self) -> Dict[str, Any]:
-        """Rebuild the projection from the event log. Last-good on failure."""
-        last_good = self.store.snapshot_index()
+        """Atomically rebuild index AND markers; rollback both on any failure."""
         try:
-            self.store.conn.execute("DELETE FROM applied")
-            rows: Dict[tuple, Dict[str, Any]] = {}
-            for event in self.store.all_events():
-                object_key = (event["payload"] or {}).get("object_key")
-                if not object_key:
-                    if event["kind"] in FILE_KINDS:
-                        raise ValueError(
-                            "event kind %r requires a non-empty 'object_key'" % event["kind"]
-                        )
-                    continue
-                key = (object_key, event["device_id"])
-                row = rows.get(key, {"object_key": object_key, "device_id": event["device_id"],
-                                     "state": {}, "version": 0, "updated_at": event["ts"]})
-                kind = event["kind"]
-                payload = event["payload"] or {}
-                if kind in ("file.upsert", "file.write", "file.update"):
-                    row["state"] = {"status": "present", "checksum": payload.get("checksum", ""),
-                                    "size": payload.get("size")}
-                elif kind in ("file.delete", "file.remove"):
-                    row["state"] = {"status": "deleted"}
-                elif kind == "file.move":
-                    row["state"] = {"status": "moved", "to": payload.get("to", "")}
-                else:
-                    row["state"] = payload.get("state", {"status": kind})
-                row["state"]["last_event"] = event["event_id"]
-                row["state"]["updated_at"] = event["ts"]
-                row["version"] += 1
-                row["updated_at"] = event["ts"]
-                rows[key] = row
-
-            self.store.replace_index(list(rows.values()))
-            for event in self.store.all_events():
-                self.store.mark_applied(event["event_id"], now_iso())
-            self.store.set_checkpoint("last_good_rebuild", now_iso())
-            self.store.commit()
-            return {"rebuilt": len(rows), "last_good_used": False}
-        except Exception as exc:
-            # last-good behaviour: restore the previous known-good index
-            self.store.conn.execute("DELETE FROM shared_index")
-            for row in last_good:
+            with self.store.conn:
+                self.store.conn.execute("BEGIN IMMEDIATE")
+                self.store.conn.execute("DELETE FROM applied")
+                self.store.conn.execute("DELETE FROM shared_index")
+                for event in self.store.all_events():
+                    self._apply_event(event)
+                    self.store.mark_applied(event["event_id"], now_iso())
                 self.store.conn.execute(
-                    "INSERT INTO shared_index (object_key, device_id, state, version, updated_at) VALUES (?,?,?,?,?)",
-                    (row["object_key"], row["device_id"],
-                     json.dumps(row["state"], ensure_ascii=False, sort_keys=True),
-                     row["version"], row["updated_at"]),
+                    "INSERT INTO checkpoints(name,value) VALUES (?,?) "
+                    "ON CONFLICT(name) DO UPDATE SET value=excluded.value",
+                    ("last_good_rebuild", now_iso()),
                 )
-            self.store.commit()
-            return {"rebuilt": len(last_good), "last_good_used": True, "error": str(exc)}
+                count = len(self.store.all_index())
+            return {"rebuilt": count, "last_good_used": False}
+        except Exception:
+            return {"rebuilt": len(self.store.all_index()), "last_good_used": True,
+                    "error": "event validation or projection failed; last-good index retained"}
 
     # ----------------------------------------------------------------- query
 
@@ -281,4 +258,5 @@ class RegistryService:
         """The one call you make after being offline for a while."""
         drained = self.drain_outbox()
         rebuilt = self.rebuild_shared_index()
-        return {"drained": drained, "rebuild": rebuilt, "converged": drained["failed"] == 0}
+        return {"drained": drained, "rebuild": rebuilt, "converged": (drained["failed"] == 0 and not rebuilt["last_good_used"]
+                                                                  and not self.store.pending_outbox())}

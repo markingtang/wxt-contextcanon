@@ -1,33 +1,14 @@
-# Optional Docker path for WXT ContextCanon.
-#
-# The 30-minute quickstart does NOT need Docker - `contextcanon demo seed` runs on
-# SQLite with the standard library only. This file exists for people who want
-# a containerised, production-like run.
-#
-# Everything here is local and generic (localhost, a named volume, no secrets).
-
+# Optional one-shot CLI container. No HTTP API or health claim.
 services:
   contextcanon-api:
-    image: python:3.11-slim
-    container_name: wxt-contextcanon-api
+    image: python:3.13-slim
     working_dir: /app
     volumes:
-      - ./:/app:ro
+      - ../../:/app:ro
       - contextcanon-data:/app/data
     environment:
-      WXT_CONTEXTCANON_PROFILE_DATABASE: /app/data/profile.db
-      WXT_CONTEXTCANON_REGISTRY_SHARED_STORE: /app/data/registry/shared.db
-      WXT_CONTEXTCANON_REGISTRY_DEVICE_ID: demo-device
-    ports:
-      - "8611:8611"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    command: >
-      sh -c "python -c 'import profile_core' 2>/dev/null || PYTHONPATH=/app/packages python -m contextcanon_cli doctor"
-    restart: unless-stopped
-
+      PYTHONPATH: /app/packages
+      PYTHONDONTWRITEBYTECODE: "1"
+    command: ["python", "-m", "contextcanon_cli", "doctor"]
 volumes:
   contextcanon-data:

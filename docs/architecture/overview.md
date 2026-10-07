@@ -6,14 +6,14 @@
 one personal context  +  one file-state ledger  +  many agents  +  many devices
 ```
 
-**0.1.0 reality check.** Multi-agent is real and shared. The "many devices" half is
+**0.1.1 reality check.** Multi-agent is real and shared. The "many devices" half is
 **simulated**: the second device in `contextcanon registry demo` is a logical device inside the
 same local database, which exercises outbox replay, idempotency and rebuild without a
-network. **Real cross-machine transport is not shipped**, and the 0.1.0 runtime is
+network. **Real cross-machine transport is not shipped**, and the 0.1.1 runtime is
 single-machine.
 
 Everything in WXT ContextCanon is in service of those four nouns. If a feature does not serve
-one of them, it does not belong in 0.1.0.
+one of them, it does not belong in 0.1.1.
 
 ## Layers
 
@@ -47,9 +47,7 @@ the CLI.
 ## Why SQLite first
 
 The requirement is "a stranger is running in 30 minutes". SQLite ships with Python, needs
-no server, and handles single-machine concurrency fine. PostgreSQL is a configuration
-change, not a rewrite — the service layer is the only place that would need a new store
-implementation.
+no server, and handles single-machine concurrency fine. PostgreSQL is not implemented; it needs a new store and transaction integration.
 
 ## Why the MCP surface is small
 

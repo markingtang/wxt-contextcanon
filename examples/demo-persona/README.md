@@ -21,11 +21,15 @@
 ## Seeding
 
 ```bash
-contextcanon demo seed --reset
-contextcanon profile list --subject demo:alex-chen
-contextcanon profile as-of --subject demo:alex-chen --at 2026-01-01T00:00:00Z
+./contextcanon demo seed --reset
+./contextcanon profile list --subject demo:alex-chen
+./contextcanon profile as-of --subject demo:alex-chen --days-ago 30
 ```
 
 Dates in the persona are expressed as offsets from "now" (for example
 `valid_until_offset_days: -2`), so the demo behaves correctly whenever it is
 cloned.
+
+Shell examples on this page use Bash from the repository root. For PowerShell use
+`.\contextcanon.cmd`; for CMD use `contextcanon.cmd`. The complete platform-specific
+steps are in [Quickstart](../../docs/quickstart/local.md).

@@ -78,9 +78,9 @@ class ReleaseGuardTests(unittest.TestCase):
             handle.write("services: {}\n")
         integrity = os.path.join(self.tmp, "integrity.json")
         path = self._config(project_name="contextcanon-x", compose_files=["compose.yml"],
-                            integrity_file=integrity, lock_path="./data/i.lock")
-        first = release_guard.run(path, self.tmp, apply=False)
-        self.assertEqual(first["outcome"], "planned")
+                            integrity_file=integrity, lock_path="./data/i.lock", deploy_command="echo synthetic")
+        first = release_guard.run(path, self.tmp, apply=True, intent="synthetic test", skip_backup=True)
+        self.assertEqual(first["outcome"], "applied")
         with open(target, "a", encoding="utf-8") as handle:
             handle.write("# drift\n")
         second = release_guard.run(path, self.tmp, apply=False)
@@ -105,9 +105,9 @@ class ReleaseGuardTests(unittest.TestCase):
             handle.write("services: {}\n")
         integrity = os.path.join(self.tmp, "data", "nested", "deploy-integrity.json")
         path = self._config(project_name="contextcanon-x", compose_files=["compose.yml"],
-                            integrity_file=integrity, lock_path="./data/i.lock")
-        result = release_guard.run(path, self.tmp, apply=False)
-        self.assertEqual(result["outcome"], "planned", result.get("error"))
+                            integrity_file=integrity, lock_path="./data/i.lock", deploy_command="echo synthetic")
+        obj = release_guard.ReleaseGuard(release_guard.load_deploy_config(path), self.tmp)
+        obj.integrity()
         self.assertTrue(os.path.exists(integrity))
 
     def test_integrity_filesystem_error_is_a_guard_error(self):
@@ -119,8 +119,8 @@ class ReleaseGuardTests(unittest.TestCase):
             handle.write("not a directory\n")
         integrity = os.path.join(blocker, "sub", "deploy-integrity.json")
         path = self._config(project_name="contextcanon-x", compose_files=["compose.yml"],
-                            integrity_file=integrity, lock_path="./data/i.lock")
-        result = release_guard.run(path, self.tmp, apply=False)
+                            integrity_file=integrity, lock_path="./data/i.lock", deploy_command="echo synthetic")
+        result = release_guard.run(path, self.tmp, apply=True, intent="test", skip_backup=True)
         self.assertEqual(result["outcome"], "aborted")
         fail_closed = [s for s in result["steps"] if s["step"] == "fail_closed"][0]
         self.assertNotEqual(fail_closed["failed_step"], "unexpected",
@@ -141,7 +141,7 @@ class ReleaseGuardTests(unittest.TestCase):
             json.dump(config, handle)
         result = release_guard.run(path, self.tmp, apply=False)
         self.assertEqual(result["outcome"], "planned", result.get("error"))
-        self.assertTrue(os.path.exists(os.path.join(self.tmp, "data", "deploy-integrity.json")))
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "data", "deploy-integrity.json")))
 
     def test_compose_path_with_space_is_quoted(self):
         path = self._config(project_name="contextcanon-x", lock_path="./data/s.lock")

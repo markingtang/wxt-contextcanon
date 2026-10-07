@@ -186,7 +186,7 @@ class ReleaseGuard:
             raise GuardError("project_name must match [a-z0-9][a-z0-9_-]*, got %r" % name)
         self._step("project_guard", "ok", project_name=name)
 
-    def integrity(self) -> None:
+    def integrity(self, dry_run: bool = False) -> None:
         files = self.config.get("compose_files") or []
         if not files:
             self._step("integrity", "skipped", reason="no deployment inputs configured")
@@ -205,6 +205,9 @@ class ReleaseGuard:
             self._step("integrity", "recorded", files=actual)
             return
         integrity_path = _abs(self.root, integrity_file)
+        if dry_run and not os.path.exists(integrity_path):
+            self._step("integrity", "dry_run", files=actual, note="baseline will be created on apply")
+            return
         parent = os.path.dirname(integrity_path)
         if parent:
             try:
@@ -240,14 +243,13 @@ class ReleaseGuard:
         if os.path.exists(self.lock_path):
             age = time.time() - os.path.getmtime(self.lock_path)
             if age > LOCK_STALE_SECONDS:
-                os.remove(self.lock_path)
-                self._step("lock", "stale_removed", age_seconds=int(age))
-            else:
-                raise GuardError("another deployment holds the lock: %s" % self.lock_path)
+                raise GuardError("stale lock requires operator inspection; not removed automatically")
+            raise GuardError("another deployment holds the lock")
         flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
         handle = os.open(self.lock_path, flags)
         with os.fdopen(handle, "w", encoding="utf-8") as stream:
-            json.dump({"pid": os.getpid(), "user": getpass.getuser(), "at": time.time()},
+            self.lock_acquired = True
+            json.dump({"pid": os.getpid(), "at": time.time()},
                       stream)
         self.lock_acquired = True
         self._step("lock", "acquired", path=self.lock_path)
@@ -271,15 +273,17 @@ class ReleaseGuard:
         if not command:
             if skip:
                 self._step("backup_gate", "skipped_by_flag")
+            elif dry_run:
+                self._step("backup_gate", "skipped", reason="no backup_command configured; apply will require backup or explicit skip")
             else:
-                self._step("backup_gate", "skipped", reason="no backup_command configured")
+                raise GuardError("backup_command is required for apply; use --skip-backup only after explicit review")
             return
         if skip:
             self._step("backup_gate", "skipped_by_flag", warning="backup explicitly skipped")
             return
         result = self.transport.run(command, dry_run=dry_run)
         if not result["ok"]:
-            raise GuardError("backup gate failed: %s" % result.get("stderr") or result.get("error"))
+            raise GuardError("backup gate failed: %s" % (result.get("stderr") or result.get("error") or "command failed"))
         self._step("backup_gate", "ok" if not dry_run else "dry_run")
 
     def migration_test(self, dry_run: bool) -> None:
@@ -321,13 +325,16 @@ class ReleaseGuard:
             self._step("post_health", "skipped", reason="no endpoints configured")
             return
         timeout = float(self.config.get("health_timeout_seconds", 20))
-        deadline = time.time() + timeout
         checked = []
         for url in endpoints:
+            deadline = time.time() + timeout
+            from urllib.parse import urlsplit
+            local = urlsplit(url).hostname in ("localhost", "127.0.0.1", "::1")
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({})) if local else urllib.request.build_opener()
             ok = False
             while time.time() < deadline:
                 try:
-                    with urllib.request.urlopen(url, timeout=3) as response:
+                    with opener.open(url, timeout=3) as response:
                         if 200 <= response.status < 400:
                             ok = True
                         break
@@ -354,32 +361,35 @@ class ReleaseGuard:
         dry_run = not apply
         failed_step = None
         error = None
+        self.steps = []
+        outcome = "aborted"
+        step = "project_guard"
         try:
-            self.project_guard()
-            self.integrity()
-            self.acquire_lock()
-            self.check_intent(apply, intent)
-            self.backup_gate(skip_backup, dry_run)
-            self.migration_test(dry_run)
-            self.deploy(dry_run)
-            if not dry_run:
-                self.post_health()
-                self.smoke(dry_run)
-            else:
-                self._step("post_health", "dry_run")
-                self._step("smoke", "dry_run")
+            operations = [
+                ("project_guard", self.project_guard),
+                ("mutation_intent", lambda: self.check_intent(apply, intent)),
+                ("lock", self.acquire_lock if apply else lambda: self._step("lock", "dry_run")),
+                ("integrity", lambda: self.integrity(dry_run)),
+                ("backup_gate", lambda: self.backup_gate(skip_backup, dry_run)),
+                ("migration_test", lambda: self.migration_test(dry_run)),
+                ("deploy", lambda: self.deploy(dry_run)),
+                ("post_health", self.post_health if apply else lambda: self._step("post_health", "dry_run")),
+                ("smoke", lambda: self.smoke(dry_run)),
+            ]
+            for step, operation in operations:
+                operation()
             outcome = "applied" if apply else "planned"
-        except GuardError as exc:
-            failed_step = self.steps[-1]["step"] if self.steps else "project_guard"
-            error = str(exc)
-            outcome = "aborted"
+        except (Exception, KeyboardInterrupt) as exc:
+            failed_step = step
+            error = "interrupted" if isinstance(exc, KeyboardInterrupt) else str(exc)
             self._step("fail_closed", "engaged", failed_step=failed_step, error=error)
-        except Exception as exc:  # noqa: BLE001 - fail closed on anything unexpected
-            error = "%s: %s" % (type(exc).__name__, exc)
-            outcome = "aborted"
-            self._step("fail_closed", "engaged", failed_step="unexpected", error=error)
         finally:
-            self.release_lock()
+            try:
+                self.release_lock()
+            except OSError:
+                outcome = "aborted"
+                error = "lock release failed; operator inspection required"
+                self._step("fail_closed", "engaged", failed_step="lock", error=error)
 
         return {
             "mode": "apply" if apply else "plan",
@@ -403,8 +413,23 @@ def _valid_project_name(name: str) -> bool:
 
 def run(config_path: Optional[str] = None, root: str = ".", apply: bool = False,
         intent: Optional[str] = None, skip_backup: bool = False) -> Dict[str, Any]:
-    config = load_deploy_config(config_path)
-    return ReleaseGuard(config, root).run(apply, intent, skip_backup)
+    try:
+        config = load_deploy_config(config_path)
+        # Shipped synthetic commands also work from installed wheels / other cwd.
+        fixture = os.path.join(os.path.dirname(__file__), "fake_stack", "fake_deploy.json")
+        if config_path and os.path.abspath(config_path) == os.path.abspath(fixture):
+            scripts = {"backup_command": ("fake_backup.py", ""),
+                       "migration_test_command": ("fake_migration_test.py", ""),
+                       "deploy_command": ("fake_service.py", "--start"),
+                       "smoke_command": ("fake_service.py", "--smoke"),
+                       "stop_command": ("fake_service.py", "--stop")}
+            for key, (script, flag) in scripts.items():
+                config[key] = "%s %s %s" % (LocalShell.quote(sys.executable), LocalShell.quote(os.path.join(os.path.dirname(fixture), script)), flag)
+        config.setdefault("workdir", root)
+        return ReleaseGuard(config, root).run(apply, intent, skip_backup)
+    except Exception:
+        return {"mode": "apply" if apply else "plan", "outcome": "aborted",
+                "fail_closed": True, "error": "invalid or unreadable deployment configuration", "steps": []}
 
 
 if __name__ == "__main__":
@@ -416,5 +441,6 @@ if __name__ == "__main__":
     parser.add_argument("--root", default=os.getcwd())
     parser.add_argument("--intent")
     args = parser.parse_args()
-    print(json.dumps(run(args.config, args.root, args.action == "apply", args.intent),
-                     indent=2, default=str))
+    result = run(args.config, args.root, args.action == "apply", args.intent)
+    print(json.dumps(result, indent=2, default=str))
+    raise SystemExit(1 if result["outcome"] == "aborted" else 0)

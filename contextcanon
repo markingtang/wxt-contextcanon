@@ -23,7 +23,7 @@ case "$(uname -s 2>/dev/null || echo unknown)" in
 esac
 export PYTHONPATH="$PKG${SEP}${PYTHONPATH:-}"
 
-if command -v python3 >/dev/null 2>&1; then
+if command -v python3 >/dev/null 2>&1 && python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)" >/dev/null 2>&1; then
   exec python3 -m contextcanon_cli "$@"
 fi
 exec python -m contextcanon_cli "$@"

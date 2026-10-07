@@ -26,7 +26,8 @@ class McpTests(unittest.TestCase):
         )
 
     def tearDown(self):
-        shutil.rmtree(self.tmp, ignore_errors=True)
+        self.server.close()
+        shutil.rmtree(self.tmp)
 
     def call(self, method, params=None):
         return self.server.handle({"jsonrpc": "2.0", "id": 1, "method": method,
@@ -138,7 +139,7 @@ class McpTests(unittest.TestCase):
 
     def test_unknown_tool_and_missing_argument(self):
         unknown = self.call("tools/call", {"name": "nope", "arguments": {}})
-        self.assertTrue(unknown["result"]["isError"])
+        self.assertEqual(unknown["error"]["code"], -32602)
         missing = self.call("tools/call", {"name": "profile_get", "arguments": {}})
         self.assertTrue(missing["result"]["isError"])
 

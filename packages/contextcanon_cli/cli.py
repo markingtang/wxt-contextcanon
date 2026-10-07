@@ -25,7 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="contextcanon",
         description="WXT ContextCanon - one personal context and file-state ledger "
-                    "for every AI agent and every device.",
+                    "for trusted AI agents on one machine.",
     )
     parser.add_argument("--config", help="path to contextcanon.json (defaults are all local)")
     parser.add_argument("--version", action="store_true", help="print version and exit")
@@ -76,7 +76,9 @@ def build_parser() -> argparse.ArgumentParser:
     hi.add_argument("--key", required=True)
     ao = p_sub.add_parser("as-of", help="what did we believe at time T?")
     ao.add_argument("--subject", default=DEMO_SUBJECT)
-    ao.add_argument("--at", required=True, help="ISO timestamp")
+    temporal = ao.add_mutually_exclusive_group(required=True)
+    temporal.add_argument("--at", help="ISO timestamp with timezone")
+    temporal.add_argument("--days-ago", type=int, help="relative history query, e.g. 30")
     au = p_sub.add_parser("audit", help="audit trail")
     au.add_argument("--subject", default=DEMO_SUBJECT)
     au.add_argument("--limit", type=int, default=50)
@@ -107,6 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
                     choices=["file.upsert", "file.delete", "file.move"])
     ev.add_argument("--object-key", required=True)
     ev.add_argument("--checksum", default="")
+    ev.add_argument("--to", help="destination object key for file.move")
     ev.add_argument("--device-id")
     p_sub.add_parser("sync", help="drain the local outbox")
     p_sub.add_parser("rebuild", help="rebuild the shared index from the event log")
@@ -137,12 +140,24 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    try:
+        return _main(argv)
+    except KeyboardInterrupt:
+        print(json.dumps({"error": "interrupted"}), file=sys.stderr)
+        return 130
+    except Exception as exc:
+        # Never echo config values, SQL payloads, or private paths in errors.
+        print(json.dumps({"error": type(exc).__name__, "message": "operation failed; check arguments and local configuration"}), file=sys.stderr)
+        return 1
+
+
+def _main(argv: Optional[List[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     parser = build_parser()
     args = parser.parse_args(argv)
 
     if args.version:
-        print(json.dumps({"name": "wxt-contextcanon", "version": "0.1.0"}))
+        print(json.dumps({"name": "wxt-contextcanon", "version": "0.1.1"}))
         return 0
     if not args.command:
         parser.print_help()
@@ -191,9 +206,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         return _benchmark(ctx, args)
 
     if command == "mcp":
-        from mcp_server import build_server
-        server = build_server(getattr(args, "config", None))
-        server.serve()
+        from mcp_server.server import ContextCanonMcpServer
+        server = ContextCanonMcpServer(ctx.config)
+        try:
+            server.serve()
+        finally:
+            server.close()
         return 0
 
     if command == "doctor":
@@ -238,15 +256,18 @@ def _profile(ctx: Context, args: Any) -> int:
             provenance={"source": args.source, "method": "cli.set"},
             on_conflict=args.on_conflict,
         )
-        return _emit(result)
+        _emit(result)
+        return 1 if result["action"] == "rejected" else 0
 
     if action == "history":
         facts = service.history(args.subject, args.key)
         return _emit({"count": len(facts), "facts": facts})
 
     if action == "as-of":
-        facts = service.as_of(args.subject, args.at)
-        return _emit({"at": args.at, "count": len(facts), "facts": facts})
+        from datetime import datetime, timedelta, timezone
+        at = args.at or (datetime.now(timezone.utc) - timedelta(days=args.days_ago)).isoformat()
+        facts = service.as_of(args.subject, at)
+        return _emit({"at": at, "count": len(facts), "facts": facts})
 
     if action == "audit":
         events = service.audit(args.subject, args.limit)
@@ -288,6 +309,8 @@ def _registry(ctx: Context, args: Any) -> int:
 
     if action == "event":
         payload: Dict[str, Any] = {"object_key": args.object_key}
+        if args.to:
+            payload["to"] = args.to
         if args.checksum:
             payload["checksum"] = args.checksum
         event = service.append_event(args.kind, payload, device_id=args.device_id)
@@ -295,13 +318,19 @@ def _registry(ctx: Context, args: Any) -> int:
         return _emit({"event": event, "applied": True})
 
     if action == "sync":
-        return _emit(service.drain_outbox())
+        result = service.drain_outbox()
+        _emit(result)
+        return 1 if result["failed"] else 0
 
     if action == "rebuild":
-        return _emit(service.rebuild_shared_index())
+        result = service.rebuild_shared_index()
+        _emit(result)
+        return 1 if result["last_good_used"] else 0
 
     if action == "recover":
-        return _emit(service.offline_recovery())
+        result = service.offline_recovery()
+        _emit(result)
+        return 0 if result["converged"] else 1
 
     if action == "manifest":
         entries = [{"object_key": k} for k in args.entries.split(",") if k]
@@ -345,7 +374,7 @@ def _registry_demo(service, ctx: Context, reset: bool = False) -> Dict[str, Any]
         oid = "ob_demo_%s" % key.replace("/", "_").replace(".", "_")
         service.store.enqueue(oid, second_device, "file.upsert",
                               {"object_key": key, "checksum": "demo-b2", "size": 4},
-                              "2026-01-01T00:00:00Z")
+                              __import__("profile_core").now_iso())
         offline_ids.append(oid)
     steps.append({"step": "offline.queued", "pending": len(service.store.pending_outbox())})
 
@@ -355,7 +384,7 @@ def _registry_demo(service, ctx: Context, reset: bool = False) -> Dict[str, Any]
     # Re-delivery of the same work (network retry, double sync) must not
     # double-apply. Put the same outbox ids back into 'pending' and drain again.
     for oid in offline_ids:
-        service.store.mark_outbox(oid, "pending", "", "2026-01-01T00:00:00Z")
+        service.store.mark_outbox(oid, "pending", "", __import__("profile_core").now_iso())
     replay = service.drain_outbox()
     steps.append({"step": "idempotent.replay", "result": replay})
 
@@ -386,8 +415,11 @@ def _benchmark(ctx: Context, args: Any) -> int:
     if args.action == "list":
         return _emit(benchmark_run.list_cases(root))
     if args.action == "smoke":
-        return _emit(benchmark_run.run(root, case_filter="smoke"))
-    return _emit(benchmark_run.run(root, out_path=args.out))
+        result = benchmark_run.run(root, case_filter="smoke")
+    else:
+        result = benchmark_run.run(root, out_path=args.out)
+    _emit(result)
+    return 0 if result["contextcanon_score"] == result["cases"] else 1
 
 
 def _guard(ctx: Context, args: Any) -> int:
@@ -409,7 +441,8 @@ def _guard(ctx: Context, args: Any) -> int:
         intent=args.intent,
         skip_backup=args.skip_backup,
     )
-    return _emit(result)
+    _emit(result)
+    return 1 if result["outcome"] == "aborted" else 0
 
 
 def _doctor(ctx: Context) -> int:
@@ -432,4 +465,5 @@ def _doctor(ctx: Context) -> int:
             problems.append("non-local health endpoint configured: %s" % endpoint)
     checks["problems"] = problems
     checks["ok"] = not problems
-    return _emit(checks)
+    _emit(checks)
+    return 0 if checks["ok"] else 1

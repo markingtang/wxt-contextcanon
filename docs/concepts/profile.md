@@ -63,7 +63,7 @@ validity windows, **not** row creation time, so back-dated and scheduled facts r
 correctly.
 
 ```bash
-contextcanon profile as-of --subject demo:alex-chen --at 2026-01-01T00:00:00Z
+./contextcanon profile as-of --subject demo:alex-chen --days-ago 30
 ```
 
 ## Sensitivity
@@ -95,3 +95,7 @@ unverified — the honest default is to distrust it.
 Every write appends to `fact_events` with an actor and a payload. `contextcanon profile audit`
 gives you the trail; `contextcanon profile history` gives you the revision chain for one key.
 Together they answer "who changed this, when, from what, and why".
+
+Shell examples on this page use Bash from the repository root. For PowerShell use
+`.\contextcanon.cmd`; for CMD use `contextcanon.cmd`. The complete platform-specific
+steps are in [Quickstart](../quickstart/local.md).

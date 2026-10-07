@@ -40,3 +40,7 @@ contextcanon.cmd profile list --subject demo:alex-chen
 
 If you later want Postgres or Docker, see `../docker/docker-compose.yml` and
 `docs/architecture/overview.md`. WXT ContextCanon does not require either.
+
+Shell examples on this page use Bash from the repository root. For PowerShell use
+`.\contextcanon.cmd`; for CMD use `contextcanon.cmd`. The complete platform-specific
+steps are in [Quickstart](../../docs/quickstart/local.md).

@@ -2,14 +2,13 @@
 
 > Canonical context and state for AI agents.
 
-**WXT ContextCanon 0.1.0 — Public release.** Repository:
+**WXT ContextCanon 0.1.1 — Public release.** Repository:
 https://github.com/markingtang/wxt-contextcanon
 
 You run several AI agents. Each one starts fresh, re-learns the same things about you, and
 quietly disagrees with the others. WXT ContextCanon gives them **one shared, structured,
-time-aware personal context** and **one append-only file-state ledger** — so "what is true
-now" has exactly one answer, and "what did we believe before the correction?" is still
-recoverable.
+time-aware personal context** and **one append-only file-state ledger** — so accepted claims have explicit revisions and validity windows.
+It records claims; it does not verify that they are true.
 
 | | |
 |---|---|
@@ -104,7 +103,7 @@ flowchart LR
         R[("Registry Core<br/>events · outbox<br/>shared index")]
     end
 
-    subgraph Devices["Devices (0.1.0: both logical, one local store)"]
+    subgraph Devices["Devices (0.1.1: both logical, one local store)"]
         D1["device-a<br/>local SQLite"]
         D2["device-b<br/>logical, same store"]
     end
@@ -123,8 +122,8 @@ flowchart LR
     G["Release Guard<br/>config + transport adapter"] --> CLI
 ```
 
-Design rules that make this work across devices — **all five are implemented and tested
-in 0.1.0; only the transport between real machines is missing**:
+Design rules that make this work across devices — **these rules are implemented and tested
+in the local runtime; cross-machine synchronization requires further design and testing**:
 
 | Rule | What it buys you |
 |---|---|
@@ -148,8 +147,7 @@ changed and when.
 **2. Two devices, one of them offline.**
 A second logical device queues file-state changes into a local outbox while it is
 "offline". When it reconnects, the events replay into the ledger, duplicate deliveries are
-skipped by event id, and a rebuild reconciles the shared index. No clobbering, no lost
-work. *This is the mechanism you want for a real second machine — 0.1.0 runs the second
+skipped by event id, and a rebuild reconciles the shared index. Duplicate IDs with different content are rejected. *This is the mechanism you want for a real second machine — 0.1.1 runs the second
 device inside one process, so the transport is still to be built.*
 
 **3. "What did we believe in March?"**
@@ -159,63 +157,37 @@ baseline does not model validity windows at all.
 
 ---
 
-## Quickstart (about 10 minutes, no Docker)
+## Quickstart (5 minutes, no Docker)
 
-Requires Python 3.9+ and SQLite. **No third-party packages.**
+Requires Git and Python 3.9+ with SQLite. No runtime dependencies or installation needed.
 
-```bash
-git clone https://github.com/markingtang/wxt-contextcanon.git wxt-contextcanon
+```text
+git clone https://github.com/markingtang/wxt-contextcanon.git
 cd wxt-contextcanon
-
-# macOS / Linux / Git Bash
-./contextcanon demo seed --reset
-./contextcanon profile get --subject demo:alex-chen --key tooling.editor
-
-# Windows
-contextcanon.cmd demo seed --reset
-contextcanon.cmd profile get --subject demo:alex-chen --key tooling.editor
-
-# Anywhere, no wrapper needed
-PYTHONPATH=packages python -m contextcanon_cli demo seed --reset
 ```
 
-Then walk the whole thing. The three invocations are equivalent — pick whichever fits your
-shell (after `pip install -e .` the bare `contextcanon` is on your `PATH`):
-
-```bash
-./contextcanon profile list  --subject demo:alex-chen          # 20+ synthetic facts
-
-# a temporal read: ask what was true ~30 days ago. The date is computed, so the
-# example never drifts out of the demo's validity window as time passes.
-PAST=$(python -c "import datetime as d;print((d.datetime.now(d.timezone.utc)-d.timedelta(days=30)).replace(microsecond=0).isoformat().replace('+00:00','Z'))")
-./contextcanon profile as-of --subject demo:alex-chen --at "$PAST"
-
-./contextcanon registry demo --reset                            # two devices, offline, converge
-./contextcanon benchmark smoke                                  # 7-case subset, deterministic, no LLM judge
-./contextcanon guard plan                                       # dry-run deployment guard
-./contextcanon mcp                                              # start the MCP stdio server
+PowerShell:
+```powershell
+.\contextcanon.cmd demo seed --reset
+.\contextcanon.cmd profile get --key tooling.editor
+.\contextcanon.cmd profile as-of --days-ago 30
 ```
 
-Everything is written to `./data`. Delete it to start over. Nothing outside the
-repository is read or written.
+CMD uses `contextcanon.cmd`; Linux/macOS/Git Bash use `./contextcanon`.
+See the [complete copy-and-run tutorial](docs/quickstart/local.md) for all four shells,
+expected output, installation, and recovery instructions.
 
-Prefer containers? `docker compose -f deploy/docker/docker-compose.yml up -d` exists, but
-**the quickstart does not need Docker**.
+Default state is under the current directory's `data/`; configuration and environment
+variables can redirect it. Use a fresh clone and synthetic data first. Demo resets are
+not intended for a database holding real work.
 
-### Add it to an MCP client
+For a real client, follow [MCP setup and verification](docs/MCP_TOOLS.md#client-configuration).
+The server supports the legacy initialization protocol. Inspector 2.9.0 and the official
+SDK 2.3.1 are tested; clients requiring modern-only MCP are not supported.
 
-```json
-{
-  "mcpServers": {
-    "wxt-contextcanon": {
-      "command": "python",
-      "args": ["-m", "mcp_server"],
-      "env": { "PYTHONPATH": "/absolute/path/to/wxt-contextcanon/packages" },
-      "cwd": "/absolute/path/to/wxt-contextcanon"
-    }
-  }
-}
-```
+Optional Docker is a one-shot CLI environment, not a running API:
+`docker compose -f deploy/docker/docker-compose.yml run --rm contextcanon-api`.
+Docker execution is not part of the validated Quickstart.
 
 ---
 
@@ -253,22 +225,22 @@ see [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md).
 
 ```bash
 # declare what you are about to touch, before touching it
-contextcanon registry begin --task-id t-42 --intent "reorganise notes" --targets notes/a.md
-contextcanon registry event  --kind file.upsert --object-key notes/a.md --checksum abc123
-contextcanon registry end    --task-id t-42 --result ok --changed notes/a.md
+./contextcanon registry begin --task-id t-42 --intent "reorganise notes" --targets notes/a.md
+./contextcanon registry event  --kind file.upsert --object-key notes/a.md --checksum abc123
+./contextcanon registry end    --task-id t-42 --result ok --changed notes/a.md
 
-contextcanon registry query  --object-key notes/a.md
+./contextcanon registry query  --object-key notes/a.md
 # [{ "object_key": "notes/a.md", "device_id": "demo-device",
 #    "state": { "status": "present", "checksum": "abc123" }, "version": 1 }]
 
 # finished the work queued while offline
-contextcanon registry recover      # drain outbox -> rebuild index -> converged
+./contextcanon registry recover      # drain outbox -> rebuild index -> converged
 ```
 
 The shared index is derived state. `contextcanon registry rebuild` recomputes it from the event
 log at any time, and if the rebuild fails it restores the last known-good index.
 
-In 0.1.0 every device id lives in the same local database. The mechanics are real; the
+In 0.1.1 every device id lives in the same local database. The mechanics are real; the
 network between machines is not.
 
 ---
@@ -278,12 +250,12 @@ network between machines is not.
 - **Local first.** Default storage is a SQLite file inside the repository. No network
   calls are made by Profile Core or Registry Core.
 - **No telemetry, no phone-home, no account.**
-- **Sensitivity is a field, not a convention.** Every fact carries one of
+- **Sensitivity is a label, not access control.** Every fact carries one of
   `public | personal | sensitive | restricted`. Use it to decide what may be summarised
-  or logged.
+  or logged. All connected agents can read every sensitivity level.
 - **Deletion is not the default.** Expired, superseded and rejected facts are retained so
-  history is auditable. If you need a fact gone, delete the SQLite rows directly — that
-  is deliberate: silent data loss is worse than an explicit operation.
+  history is auditable. There is no complete erasure API; audit records and backups
+  may contain prior values.
 - **The shipped demo persona is fictional.** `demo:alex-chen` is synthetic data marked
   `DEMO / SYNTHETIC`. No real person, device, host, project or identifier appears anywhere
   in this repository.
@@ -325,12 +297,12 @@ second opinion.
 
 Be aware of these before you build on it:
 
-- **0.1.0 is single-machine at runtime.** Multi-agent is real. The second device in
+- **0.1.1 is single-machine at runtime.** Multi-agent is real. The second device in
   `contextcanon registry demo` is a logical device inside the same local database, used to prove
   the ledger mechanics. **Real cross-machine transport is not shipped.**
-- **SQLite only.** The service layer is storage-agnostic but PostgreSQL is not wired up.
-- **No server process.** There is no HTTP API in 0.1.0; MCP is stdio and everything else is
-  the CLI. The Docker health endpoint is a placeholder.
+- **SQLite only.** Transactions and SQL currently depend on SQLite; PostgreSQL requires a new implementation.
+- **No server process.** There is no HTTP API in 0.1.1; MCP is stdio and everything else is
+  the CLI. Docker is an optional one-shot CLI container with no health endpoint.
 - **No ingestion.** No email, calendar, health or finance connectors. No automatic chat
   import. Facts enter through the CLI or MCP.
 - **No UI.** No dashboard, no web app, no mobile app.
@@ -393,11 +365,15 @@ present a fork as the official project. **WXT ContextCanon is maintained by Xiao
 ## Development
 
 ```bash
-python tests/run_all.py                       # 116 tests
+python tests/run_all.py                       # the full test suite
 python tools/scan_secrets.py                  # secret / private-identifier gate (working tree)
 python tools/scan_secrets.py --history        # same gate, every git object on every ref
-python tools/prove_isolation.py               # no path to any production system
-python tools/accept_clean_home.py             # fresh-clone acceptance on a clean HOME
+python tools/prove_isolation.py               # static host/config check, not a sandbox
+python tools/accept_clean_home.py --watch synthetic-watch  # create this synthetic directory first
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Shell examples on this page use Bash from the repository root. For PowerShell use
+`.\contextcanon.cmd`; for CMD use `contextcanon.cmd`. The complete platform-specific
+steps are in [Quickstart](docs/quickstart/local.md).

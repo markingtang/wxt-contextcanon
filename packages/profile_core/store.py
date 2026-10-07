@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+from .model import normalize_timestamp
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -106,7 +107,7 @@ class ProfileStore:
         return self._decode(row) if row else None
 
     def facts_effective_at(
-        self, subject: str, timestamp: str, include_rejected: bool = False
+        self, subject: str, timestamp: str, include_rejected: bool = False, key: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """The single temporal rule shared by "current" reads and `as_of`.
 
@@ -117,12 +118,16 @@ class ProfileStore:
         *stay* candidates on purpose: a revision scheduled for the future must
         not hide the value that is true today.
         """
+        timestamp = normalize_timestamp(timestamp)
         sql = (
             "SELECT * FROM facts WHERE subject = ? "
-            "AND (valid_from IS NULL OR valid_from <= ?) "
-            "AND (valid_until IS NULL OR valid_until > ?) "
+            "AND (valid_from IS NULL OR julianday(valid_from) <= julianday(?)) "
+            "AND (valid_until IS NULL OR julianday(valid_until) > julianday(?)) "
         )
         args: List[Any] = [subject, timestamp, timestamp]
+        if key is not None:
+            sql += "AND key = ? "
+            args.append(key)
         if not include_rejected:
             sql += "AND status <> 'rejected' "
         # ORDER BY ranks the newest revision of each key first, so the first row
@@ -130,16 +135,15 @@ class ProfileStore:
         sql += "ORDER BY key ASC, revision DESC"
         best: Dict[str, Dict[str, Any]] = {}
         for row in self.conn.execute(sql, args):
-            fact = self._decode(row)
-            if fact["key"] not in best:
-                best[fact["key"]] = fact
+            if row["key"] not in best:
+                best[row["key"]] = self._decode(row)
         return [best[key] for key in sorted(best)]
 
     def current_fact(
         self, subject: str, key: str, timestamp: str, include_rejected: bool = False
     ) -> Optional[Dict[str, Any]]:
         """The fact that is true for ``key`` at ``timestamp`` - same rule as above."""
-        for fact in self.facts_effective_at(subject, timestamp, include_rejected):
+        for fact in self.facts_effective_at(subject, timestamp, include_rejected, key=key):
             if fact["key"] == key:
                 return fact
         return None

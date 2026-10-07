@@ -11,10 +11,10 @@ one argument honestly:
 ## Running
 
 ```bash
-contextcanon benchmark smoke     # 7-case SUBSET of the full 9
-contextcanon benchmark run       # all 9 cases
-contextcanon benchmark list      # list cases without running them
-contextcanon benchmark run --out report.md
+./contextcanon benchmark smoke     # 7-case SUBSET of the full 9
+./contextcanon benchmark run       # all 9 cases
+./contextcanon benchmark list      # list cases without running them
+./contextcanon benchmark run --out report.md
 ```
 
 Two scopes, one suite — the numbers are not in conflict:
@@ -77,9 +77,13 @@ concept.
 - Not a research-grade evaluation. Nine cases is a sketch, not a paper.
 - Not a performance benchmark. No latency, no throughput, no token cost.
 - Not a comparison against Mem0, Hindsight, Cognee, Supermemory or any other memory
-  system. Those are deliberately out of scope for 0.1.0 (see `../docs/THIRD_PARTY_NOTICES.md`).
+  system. Those are deliberately out of scope for 0.1.1 (see `../docs/THIRD_PARTY_NOTICES.md`).
 
 ## No private results
 
 No historical run data, no private paths and no internal scoreboard are published here.
 The only numbers in this repository are ones you can regenerate yourself in a few seconds.
+
+Shell examples on this page use Bash from the repository root. For PowerShell use
+`.\contextcanon.cmd`; for CMD use `contextcanon.cmd`. The complete platform-specific
+steps are in [Quickstart](../docs/quickstart/local.md).

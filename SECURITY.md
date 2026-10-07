@@ -2,12 +2,12 @@
 
 ## Scope
 
-WXT ContextCanon — the four packages under `packages/`, the CLI, the MCP server, the
+WXT ContextCanon — the packages under `packages/`, the CLI, the MCP server, the
 release guard, and the benchmark runner.
 
 ## Supported versions
 
-`0.1.0` is the first public release. There is no supported-version
+`0.1.1` is the current patch release; the original `0.1.0` history is preserved. There is no supported-version
 matrix yet, and the public repository is https://github.com/markingtang/wxt-contextcanon.
 
 ## Reporting
@@ -40,7 +40,7 @@ If the report involves data you cannot share, describe the mechanism instead of 
 
 - Encrypt the database at rest. If you need that, use full-disk encryption or a database
   with encryption enabled.
-- Authenticate anything. There is no server, no accounts, no network listener in 0.1.0. The
+- Authenticate anything. There is no server, no accounts, no network listener in 0.1.1. The
   MCP server speaks JSON-RPC over stdio to a client that already runs as you.
 - Sandbox agents. An agent able to call `profile_upsert` can write any fact for any
   subject. Treat MCP access as equivalent to shell access.
@@ -58,3 +58,16 @@ If the report involves data you cannot share, describe the mechanism instead of 
 - Denial of service against a local SQLite file.
 - Issues that require you to already have arbitrary code execution on the host.
 - The fictional demo persona (`demo:alex-chen`) — it is synthetic by construction.
+
+## Output and retention boundaries
+
+CLI/MCP success responses and audit events contain the requested fact values, including
+restricted values. Do not send them to public logs. Internal MCP errors omit raw exception
+text, but custom Guard commands may emit sensitive stderr; review deployment output locally.
+The registry does not read file contents, but callers can put arbitrary data into event
+payloads. It cannot prevent a caller from storing a credential. Sensitivity, actor, source,
+and device identifiers are caller-supplied metadata, not authentication or authorization.
+
+The isolation checker is a static/configuration check plus optional metadata comparison.
+It is not a sandbox, a network monitor, or proof that a configured command cannot reach
+production. Synthetic watch results only describe the watched synthetic directory.

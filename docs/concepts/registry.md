@@ -11,7 +11,7 @@ attributed to a device, which is what makes "two machines disagree" a representa
 state instead of a corruption.
 
 ```bash
-contextcanon registry init                      # register this machine
+./contextcanon registry init                      # register this machine
 WXT_CONTEXTCANON_REGISTRY_DEVICE_ID=laptop-b ...    # or override per device
 ```
 
@@ -41,7 +41,7 @@ A failing item stays `pending` and is retried. Nothing is dropped.
 from the event log at any time:
 
 ```bash
-contextcanon registry rebuild
+./contextcanon registry rebuild
 ```
 
 ## Idempotency
@@ -58,7 +58,7 @@ restored and the result reports `last_good_used: true`. Degrade, never destroy.
 ## Offline recovery
 
 ```bash
-contextcanon registry recover
+./contextcanon registry recover
 ```
 
 = `drain_outbox()` + `rebuild_shared_index()`. This is the only call you need after a
@@ -69,9 +69,9 @@ period offline.
 Before an agent touches files, it declares what it is about to do:
 
 ```bash
-contextcanon registry begin --task-id t-42 --intent "reorganise notes" --targets notes/a.md
-contextcanon registry event  --kind file.upsert --object-key notes/a.md --checksum abc123
-contextcanon registry end    --task-id t-42 --result ok --changed notes/a.md
+./contextcanon registry begin --task-id t-42 --intent "reorganise notes" --targets notes/a.md
+./contextcanon registry event  --kind file.upsert --object-key notes/a.md --checksum abc123
+./contextcanon registry end    --task-id t-42 --result ok --changed notes/a.md
 ```
 
 `contextcanon registry status` lists open tasks. An unfinished `begin` without an `end` is a
@@ -82,15 +82,19 @@ signal that an agent was interrupted mid-way — the intent trail tells you wher
 A device publishes what it holds, with a checksum:
 
 ```bash
-contextcanon registry manifest --scope default --entries notes/a.md,notes/b.md
+./contextcanon registry manifest --scope default --entries notes/a.md,notes/b.md
 ```
 
 Manifests let two devices compare holdings without shipping content.
 
-## What 0.1.0 does not do
+## What 0.1.1 does not do
 
 - No real network transport between machines. The second device in `registry demo` is
   simulated locally, inside one process and one SQLite file, to prove the mechanics. Until
   a transport exists, two `device_id`s do not mean two computers.
 - No content sync. Only state.
 - No conflict resolution policy beyond "the event log order decides, and you can audit it".
+
+Shell examples on this page use Bash from the repository root. For PowerShell use
+`.\contextcanon.cmd`; for CMD use `contextcanon.cmd`. The complete platform-specific
+steps are in [Quickstart](../quickstart/local.md).

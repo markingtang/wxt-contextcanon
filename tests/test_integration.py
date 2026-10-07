@@ -110,7 +110,7 @@ class IntegrationTests(unittest.TestCase):
             json.dump(config, handle)
         result = release_guard.run(path, self.tmp, apply=False)
         self.assertEqual(result["outcome"], "planned", result.get("error"))
-        self.assertTrue(os.path.exists(os.path.join(self.tmp, "data", "deploy-integrity.json")))
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "data", "deploy-integrity.json")))
 
     # ------------------------------------------- scanner marker + real secret
 

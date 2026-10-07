@@ -9,10 +9,11 @@ from __future__ import annotations
 import os
 import sys
 
-TARGET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backup.marker")
+TARGET = os.path.abspath(os.path.join("data", "backup.marker"))
 
 
 def main() -> int:
+    os.makedirs(os.path.dirname(TARGET), exist_ok=True)
     with open(TARGET, "w", encoding="utf-8", newline="\n") as handle:
         handle.write("backup completed\n")
     print("fake backup ok")

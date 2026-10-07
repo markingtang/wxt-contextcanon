@@ -32,7 +32,8 @@ def load_persona(path: Optional[str] = None, root: Optional[str] = None) -> Dict
         root = root or os.getcwd()
         candidates.append(os.path.join(root, PERSONA_RELPATH))
         candidates.append(os.path.join(root, "examples", "demo-persona", "alex-chen.facts.json"))
-        here = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from .context import repo_root
+        here = repo_root()
         candidates.append(os.path.join(here, PERSONA_RELPATH))
     for candidate in candidates:
         if os.path.exists(candidate):
@@ -69,7 +70,7 @@ def seed(service, persona_path: Optional[str] = None, reset: bool = False) -> Di
             provenance=item.get("provenance", {"source": "demo-seed"}),
             on_conflict=item.get("on_conflict", "supersede"),
             actor="demo-seed",
-            nonce="seed:" + item["key"],
+
         )
         created += 1
 
@@ -86,7 +87,7 @@ def seed(service, persona_path: Optional[str] = None, reset: bool = False) -> Di
                 provenance=op.get("provenance", {"source": "user-stated", "method": "correction"}),
                 on_conflict="supersede",
                 actor="demo-seed",
-                nonce="scripted:" + op["key"],
+
             )
             scripted.append({"op": "supersede", "key": op["key"], "action": result["action"],
                              "supersedes": result.get("supersedes")})
@@ -100,7 +101,7 @@ def seed(service, persona_path: Optional[str] = None, reset: bool = False) -> Di
                 provenance=op.get("provenance", {"source": "inferred", "confidence": 0.3}),
                 on_conflict="reject",
                 actor="demo-seed",
-                nonce="scripted-reject:" + op["key"],
+
             )
             scripted.append({"op": "reject", "key": op["key"], "action": result["action"],
                              "conflicts_with": result.get("conflicts_with"),
@@ -118,7 +119,7 @@ def seed(service, persona_path: Optional[str] = None, reset: bool = False) -> Di
                 valid_until=op.get("valid_until") or _iso(op.get("valid_until_offset_days", -2)),
                 provenance=op.get("provenance", {"source": "document", "method": "permit"}),
                 actor="demo-seed",
-                nonce="scripted-expire:" + op["key"],
+
             )
             expired = service.expire_due_facts(now_iso(), actor="demo-seed")
             scripted.append({"op": "expire", "key": op["key"],

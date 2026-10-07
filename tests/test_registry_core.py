@@ -134,10 +134,9 @@ class RegistryCoreTests(unittest.TestCase):
         self.assertEqual(len(self.service.store.all_events()), 2)
 
     def test_file_event_without_object_key_fails_closed(self):
-        event = self.service.append_event("file.upsert", {})
-        applied = self.service.apply_all()
-        self.assertEqual(applied, 0)
-        self.assertFalse(self.service.store.already_applied(event["event_id"]))
+        with self.assertRaises(ValueError):
+            self.service.append_event("file.upsert", {})
+        self.assertEqual(self.service.store.all_events(), [])
         self.assertEqual(self.service.query(), [])
 
     def test_identical_events_in_same_second_get_distinct_ids(self):

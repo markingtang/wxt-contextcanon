@@ -138,6 +138,13 @@ class ContextCanonMcpServer:
             return _error(None, -32600, "invalid request: expected a JSON object "
                                         "(JSON-RPC batch is not supported)")
 
+        if message.get("jsonrpc") != "2.0" or not isinstance(message.get("method"), str):
+            return _error(None, -32600, "invalid JSON-RPC request")
+        if "id" not in message:
+            # Notifications never receive replies or perform tool mutations.
+            return None
+        if isinstance(message["id"], (dict, list, bool)):
+            return _error(None, -32600, "invalid request id")
         method = message.get("method")
         req_id = message.get("id")
         params = message.get("params")
@@ -176,11 +183,14 @@ class ContextCanonMcpServer:
                 return _result(req_id, {"content": [{"type": "text",
                                                      "text": "error: 'arguments' must be an object"}],
                                         "isError": True})
+            if not isinstance(name, str):
+                return _error(req_id, -32602, "tool name must be a string")
             handler = self.tools.get(name)
             if handler is None:
-                return _result(req_id, {"content": [{"type": "text", "text": "unknown tool: %s" % name}],
-                                        "isError": True})
+                return _error(req_id, -32602, "unknown tool")
             try:
+                spec = next(t for t in self.tool_specs() if t["name"] == name)
+                _validate_arguments(arguments, spec["inputSchema"])
                 data = handler(arguments)
                 text = json.dumps(data, ensure_ascii=False, indent=2, default=str)
                 return _result(req_id, {"content": [{"type": "text", "text": text}], "isError": False})
@@ -188,7 +198,7 @@ class ContextCanonMcpServer:
                 return _result(req_id, {"content": [{"type": "text", "text": "error: %s" % exc}],
                                         "isError": True})
             except Exception as exc:  # never crash the agent's session
-                return _result(req_id, {"content": [{"type": "text", "text": "internal error: %s" % exc}],
+                return _result(req_id, {"content": [{"type": "text", "text": "operation failed; check arguments and local configuration"}],
                                         "isError": True})
 
         if method == "ping":
@@ -206,10 +216,13 @@ class ContextCanonMcpServer:
                   {"subject": _s("Subject id"), "query": _s("Search text"), "limit": _s("Max results", "integer")},
                   ["subject", "query"]),
             _spec("profile_upsert", "Create or replace a fact. Old value is kept as a superseded revision.",
-                  {"subject": _s("Subject id"), "key": _s("Fact key"), "value": _s("New value (any JSON)"),
+                  {"subject": _s("Subject id"), "key": _s("Fact key"), "value": {"description": "New non-null JSON value"},
                    "sensitivity": _s("public|personal|sensitive|restricted"),
                    "durability": _s("durable|temporary|scheduled"),
-                   "valid_from": _s("ISO timestamp"), "valid_until": _s("ISO timestamp"),
+                   "valid_from": {"type": ["string", "null"]}, "valid_until": {"type": ["string", "null"]},
+                   "certainty": _s("0 to 1", "number"), "confidence": _s("0 to 1", "number"),
+                   "ref": _s("Source reference"), "method": _s("Observation method"),
+                   "observed_at": _s("ISO timestamp"), "actor": _s("Audit actor"),
                    "source": _s("Provenance source"), "on_conflict": _s("supersede|reject|keep")},
                   ["subject", "key", "value"]),
             _spec("profile_as_of", "What did we believe at time T? Temporal read across revisions.",
@@ -227,6 +240,10 @@ class ContextCanonMcpServer:
                    "payload": _s("Event payload object, must include object_key", "object"),
                    "device_id": _s("Override device id")}, ["kind", "payload"]),
         ]
+
+    def close(self) -> None:
+        self.profile.store.close()
+        self.registry.store.close()
 
     def serve(self, stdin=None, stdout=None) -> None:
         stdin = stdin or sys.stdin
@@ -255,7 +272,7 @@ class ContextCanonMcpServer:
             return self.handle(message)
         except Exception as exc:  # noqa: BLE001 - the session must survive anything
             req_id = message.get("id") if isinstance(message, dict) else None
-            return _error(req_id, -32603, "internal error: %s" % exc)
+            return _error(req_id, -32603, "operation failed; check arguments and local configuration")
 
 
 def _result(req_id: Any, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -281,6 +298,8 @@ def _spec(name: str, description: str, properties: Dict[str, Any], required: Lis
 def _require(args: Dict[str, Any], key: str) -> Any:
     if key not in args:
         raise ToolError("'%s' is required" % key)
+    if not isinstance(args[key], str) or not args[key].strip():
+        raise ToolError("'%s' must be a non-empty string" % key)
     return args[key]
 
 
@@ -313,3 +332,27 @@ def build_server(config_path: Optional[str] = None, root: Optional[str] = None) 
 def _default_root() -> str:
     import os
     return os.getcwd()
+
+
+def _validate_arguments(args, schema):
+    for key in schema["required"]:
+        if key not in args:
+            raise ToolError("missing required argument: " + key)
+    for key, value in args.items():
+        prop = schema["properties"].get(key)
+        if prop is None:
+            raise ToolError("unknown argument")
+        types = prop.get("type")
+        if types is None:
+            continue
+        types = types if isinstance(types, list) else [types]
+        valid = (("null" in types and value is None)
+                 or ("string" in types and isinstance(value, str))
+                 or ("boolean" in types and isinstance(value, bool))
+                 or ("integer" in types and isinstance(value, int) and not isinstance(value, bool))
+                 or ("number" in types and isinstance(value, (int, float)) and not isinstance(value, bool))
+                 or ("object" in types and isinstance(value, dict)))
+        if not valid:
+            raise ToolError("invalid argument type: " + key)
+        if key == "limit" and not 1 <= value <= 1000:
+            raise ToolError("limit must be between 1 and 1000")

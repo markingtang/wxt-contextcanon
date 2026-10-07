@@ -1,16 +1,7 @@
-"""Prove that WXT ContextCanon cannot reach a private production system.
+"""Static/config host checks and optional directory metadata comparison.
 
-Three independent arguments, all checkable by a stranger:
-
-1. STATIC - every host reference in shipped config and docs is loopback or a
-   documentation placeholder. A non-loopback host would be the only way to
-   reach production, and there is none.
-2. CONFIG - no ssh host alias is shipped, so the ssh transport cannot run.
-3. RUNTIME - snapshot the metadata (names, sizes, mtimes) of directories that
-   must not be touched, before and after an acceptance run, and compare.
-
-This tool never reads the contents of a private directory. It only lists names
-and stat metadata, which is exactly what is needed to show nothing changed.
+This is not a sandbox or network monitor. No metadata snapshot proves that a
+configured command cannot read data or contact production. Use synthetic watches.
 """
 
 from __future__ import annotations
@@ -26,17 +17,17 @@ from typing import Any, Dict, List, Optional
 LOOPBACK = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"}
 DOC_HOSTS = {"example.com", "example.org", "example.invalid", "invalid.local",
              "your-host", "host.example", "api.github.com", "github.com",
-             "raw.githubusercontent.com", "pypi.org", "docs.python.org"}
+             "raw.githubusercontent.com", "pypi.org", "docs.python.org", "modelcontextprotocol.io"}
 
 HOST_URL_RE = re.compile(r"https?://([A-Za-z0-9._-]+)")
 # The negative lookahead rejects Python attribute access such as
 # `host = match.group(1)`, which is not a host assignment.
 HOST_ASSIGN_RE = re.compile(
-    r"(?i)\b(?:host|hostname|endpoint|alias|server)\b\s*[:=]\s*[\"']?"
+    r"(?i)(?<![.\w])(?:host|hostname|endpoint|alias|server)\b[ \t]*[:=][ \t]*[\"']?"
     r"([A-Za-z0-9._-]+)(?![A-Za-z0-9._-])[\"']?(?!\s*\()"
 )
 
-SKIP_DIRS = {".git", "__pycache__", "data", ".venv", "venv"}
+SKIP_DIRS = {".git", "__pycache__", "data", ".venv", "venv", "build", "dist", ".mcp-test"}
 TEXT_SUFFIXES = (".json", ".yml", ".yaml", ".md", ".py", ".toml", ".env", ".example", ".cfg", ".ini")
 
 
@@ -93,7 +84,7 @@ def shipped_ssh_aliases(root: str) -> List[str]:
                 data = json.load(handle)
         except (OSError, ValueError):
             continue
-        ssh = (data.get("deploy") or {}).get("ssh") if isinstance(data, dict) else None
+        ssh = (data.get("ssh") or (data.get("deploy") or {}).get("ssh")) if isinstance(data, dict) else None
         if isinstance(ssh, dict) and ssh.get("host_alias"):
             aliases.append(os.path.relpath(path, root).replace("\\", "/"))
     return aliases
@@ -111,7 +102,7 @@ def snapshot(path: str) -> Optional[Dict[str, Any]]:
             except OSError:
                 continue
             entries.append("%s|%s|%s" % (os.path.relpath(full, path), stat.st_size,
-                                         int(stat.st_mtime)))
+                                         stat.st_mtime_ns))
     digest = hashlib.sha256("\n".join(sorted(entries)).encode("utf-8")).hexdigest()
     return {"path": path, "entry_count": len(entries), "digest": digest}
 
@@ -142,17 +133,15 @@ def main() -> int:
         changed = []
         for path, snap in (before.get("watched") or {}).items():
             now = snapshot(path)
-            if snap is None and now is None:
-                continue
             if snap is None or now is None or snap["digest"] != now["digest"]:
                 changed.append(path)
         report["watched_changed"] = changed
-        report["PRODUCTION_PROFILE_CONNECTIONS"] = 0 if not changed else len(changed)
-        report["PRODUCTION_WRITES"] = 0 if not changed else len(changed)
+        report["WATCHED_METADATA_UNCHANGED"] = not changed
+        report["PRODUCTION_CONNECTIONS"] = "NOT_MEASURED"
 
     report["STATIC_NO_REMOTE_HOST"] = hosts["count"] == 0
     report["NO_SHIPPED_SSH_ALIAS"] = len(aliases) == 0
-    report["pass"] = report["STATIC_NO_REMOTE_HOST"] and report["NO_SHIPPED_SSH_ALIAS"]
+    report["pass"] = report["STATIC_NO_REMOTE_HOST"] and report["NO_SHIPPED_SSH_ALIAS"] and not report.get("watched_changed")
 
     if args.json_out:
         with open(args.json_out, "w", encoding="utf-8", newline="\n") as handle:

@@ -150,6 +150,7 @@ class ContextCanonSystem:
             return "not-shared"
         first = self.profile.get_fact(SUBJECT, "display_name")
         other = agent_b.get_fact(SUBJECT, "display_name")
+        agent_b.store.close()
         if not first or not other:
             return None
         return first["value"] if first["value"] == other["value"] else "diverged"
@@ -331,6 +332,9 @@ def run(root: str = _ROOT, case_filter: Optional[str] = None,
             report["report_path"] = os.path.abspath(out_path)
         return report
     finally:
+        if "contextcanon" in locals():
+            contextcanon.profile.store.close()
+            contextcanon.registry.store.close()
         shutil.rmtree(workdir, ignore_errors=True)
 
 
@@ -388,3 +392,4 @@ if __name__ == "__main__":
         out = sys.argv[2] if len(sys.argv) > 2 else None
         result = run(case_filter="smoke" if mode == "smoke" else None, out_path=out)
         print(json.dumps({k: v for k, v in result.items() if k != "report_markdown"}, indent=2, default=str))
+        raise SystemExit(0 if result["contextcanon_score"] == result["cases"] else 1)

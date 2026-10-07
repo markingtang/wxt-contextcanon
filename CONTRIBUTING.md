@@ -7,8 +7,11 @@ Thanks for considering it. A few rules keep this repository publishable.
 ```bash
 python tests/run_all.py            # must pass
 python tools/scan_secrets.py       # must print GATE: PASS
-python tools/prove_isolation.py    # must print pass: true
-python tools/accept_clean_home.py  # must print CLEAN_HOME_INSTALL: PASS
+python tools/prove_isolation.py    # static/config gate only
+mkdir synthetic-watch
+python tools/accept_clean_home.py --watch synthetic-watch
+python tools/check_quickstart.py
+python tools/check_install.py
 ```
 
 ## Hard rules
@@ -82,3 +85,16 @@ The public surface is pinned by `tests/test_brand_consistency.py`:
 
 If a change touches any of those, that test is the place to look. Renaming any of them is
 a deliberate, discussed decision — not a drive-by edit.
+
+Shell examples on this page use Bash from the repository root. For PowerShell use
+`.\contextcanon.cmd`; for CMD use `contextcanon.cmd`. The complete platform-specific
+steps are in [Quickstart](docs/quickstart/local.md).
+
+CI checks Windows and Linux on Python 3.9 and 3.13 after an actual GitHub checkout
+with origin. Full-history scans are separate from working-tree scans. MCP compatibility
+uses pinned optional clients; see docs/MCP_TOOLS.md. There is no deployment job or secret
+requirement. Original release history is preserved; normal branches, remotes and merges
+are expected. Run output, not a frozen count in prose, is the authoritative test total.
+
+A watch comparison only covers the named directory. Use synthetic fixtures in CI; it
+cannot prove that real production systems were observed or untouched.
