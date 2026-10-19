@@ -8,7 +8,7 @@ WXT ContextCanon 的 `packages/`、CLI、MCP server、Release Guard 和 benchmar
 
 ## 支持版本
 
-当前补丁版本为 `0.1.1`，原 `0.1.0` 历史保留。目前尚无支持版本矩阵。
+当前补丁版本为 `0.1.2`，原 `0.1.0` 与 `0.1.1` 历史保留。目前尚无支持版本矩阵。
 公开仓库为 https://github.com/markingtang/wxt-contextcanon。
 
 ## 报告问题
@@ -37,7 +37,7 @@ WXT ContextCanon 的 `packages/`、CLI、MCP server、Release Guard 和 benchmar
 项目尚不提供的保护：
 
 - **数据库静态加密**。需要时使用全盘加密或支持加密的数据库。
-- **身份认证**。0.1.1 没有账号、常驻网络 API；MCP 通过 stdio 与以你的身份运行的客户端通信。
+- **身份认证**。0.1.2 没有账号、常驻网络 API；MCP 通过 stdio 与以你的身份运行的客户端通信。
   Release Guard 的虚构测试栈可临时启动 loopback HTTP 服务。
 - **Agent 沙箱或权限隔离**。能调用 `profile_upsert` 的 Agent 可写任意 subject 的事实。
   应把 MCP 访问视作与 shell 访问同等信任级别。

@@ -6,14 +6,14 @@
 one personal context  +  one file-state ledger  +  many agents  +  many devices
 ```
 
-**0.1.1 reality check.** Multi-agent is real and shared. The "many devices" half is
+**0.1.2 reality check.** Multi-agent is real and shared. The "many devices" half is
 **simulated**: the second device in `contextcanon registry demo` is a logical device inside the
 same local database, which exercises outbox replay, idempotency and rebuild without a
-network. **Real cross-machine transport is not shipped**, and the 0.1.1 runtime is
+network. **Real cross-machine transport is not shipped**, and the 0.1.2 runtime is
 single-machine.
 
 Everything in WXT ContextCanon is in service of those four nouns. If a feature does not serve
-one of them, it does not belong in 0.1.1.
+one of them, it does not belong in 0.1.2.
 
 ## Layers
 

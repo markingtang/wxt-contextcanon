@@ -75,6 +75,11 @@ Agent 声明事实，通过 `profile_upsert` 的 `on_conflict` 指定策略：
 响应为 `{ action, fact, supersedes, conflicts_with }`，`action` 取值为
 `created | superseded | rejected | kept | unchanged`。
 
+参数校验失败返回 `isError: true` 和具体信息，便于调用方区分：非法时间格式会指明出错字段
+（`valid_until must be an ISO timestamp with timezone ...`）；未提供 `valid_from` 时，
+已经过去的 `valid_until` 会明确报"时间已在过去"，而不是错误地归咎于 `valid_from`。
+提供早于 `valid_until` 的 `valid_from` 时，回填历史时间窗口仍然受支持。
+
 ### `profile_as_of`
 
 ```json
@@ -104,6 +109,10 @@ Agent 声明事实，通过 `profile_upsert` 的 `on_conflict` 指定策略：
 ```json
 { "kind": "file.upsert", "payload": { "object_key": "notes/a.md", "checksum": "abc123" } }
 ```
+
+对 `file.upsert` / `file.write` / `file.update`，payload 中的可选字段 `version`（文件自身的
+版本标签，例如 `"v3"`）、`updated_by` 和 `date` 会被保留在 `registry_query` 返回的投影
+`state` 中，与 `checksum`、`size` 并列。行上的数字 `version` 仍然是账本的事件计数器。
 
 ## 协议兼容范围
 

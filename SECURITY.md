@@ -9,7 +9,7 @@ release guard, and the benchmark runner.
 
 ## Supported versions
 
-`0.1.1` is the current patch release; the original `0.1.0` history is preserved. There is no supported-version
+`0.1.2` is the current patch release; the original `0.1.0` and `0.1.1` history is preserved. There is no supported-version
 matrix yet, and the public repository is https://github.com/markingtang/wxt-contextcanon.
 
 ## Reporting
@@ -42,7 +42,7 @@ If the report involves data you cannot share, describe the mechanism instead of 
 
 - Encrypt the database at rest. If you need that, use full-disk encryption or a database
   with encryption enabled.
-- Authenticate anything. There is no server, no accounts, no network listener in 0.1.1. The
+- Authenticate anything. There is no server, no accounts, no network listener in 0.1.2. The
   MCP server speaks JSON-RPC over stdio to a client that already runs as you.
 - Sandbox agents. An agent able to call `profile_upsert` can write any fact for any
   subject. Treat MCP access as equivalent to shell access.

@@ -4,7 +4,7 @@ description: >
   Use WXT ContextCanon when an agent needs to recall, update, or search a shared personal
   context (Profile Core), or when it is about to create/modify/delete files and
   needs mutation intent and a shared file-state ledger (Registry Core).
-version: 0.1.1
+version: 0.1.2
 ---
 
 # WXT ContextCanon - shared context and file-state ledger

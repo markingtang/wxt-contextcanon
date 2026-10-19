@@ -21,12 +21,12 @@ analytics, no account, no hosted component.
 - File contents. The registry tracks *state about* files, not the files.
 - Credentials should not be stored. The service does not enforce this; the demo models the recommended behaviour: store a pointer to a secret
   manager, never the secret.
-- Anything you did not write. There is no background ingestion in 0.1.1.
+- Anything you did not write. There is no background ingestion in 0.1.2.
 
 ## Sensitivity
 
 Every fact carries `public | personal | sensitive | restricted`. It is a **label**, not an
-enforcement mechanism — nothing in 0.1.1 blocks a caller from reading a `restricted` fact.
+enforcement mechanism — nothing in 0.1.2 blocks a caller from reading a `restricted` fact.
 Its purpose is to give every downstream consumer (a skill, a summariser, a log) a
 machine-readable signal about what is safe to repeat.
 
@@ -43,7 +43,7 @@ DELETE as proof of erasure.
 Events carry a `device_id`. When two devices have different beliefs, both are visible and
 the event log decides the order. No device silently wins.
 
-In 0.1.1 both device ids live in the same local database — the second device is a logical
+In 0.1.2 both device ids live in the same local database — the second device is a logical
 device, not a second machine. No data leaves the host in either case, which is why this
 section is short.
 

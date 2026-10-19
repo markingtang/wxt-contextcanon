@@ -47,7 +47,7 @@ nothing beyond these ten steps is implemented or claimed here.
 - **Fail closed.** Any failure aborts, names the failed step and releases the lock.
 - **Skipped is not OK.** An unconfigured step is reported `skipped`, never `ok`.
 - **Transports are adapters.** `local-shell` and `ssh-shell` only. No Kubernetes, Nomad or
-  Swarm in 0.1.1.
+  Swarm in 0.1.2.
 
 ## Trying fail-closed
 

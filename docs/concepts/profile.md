@@ -66,6 +66,24 @@ correctly.
 ./contextcanon profile as-of --subject demo:alex-chen --days-ago 30
 ```
 
+## Writing validity windows
+
+`valid_from` and `valid_until` must be ISO timestamps **with a timezone**
+(`2026-10-13T12:00:00Z`). A malformed timestamp is rejected with an error naming the
+offending field. The window rules themselves are:
+
+- **With `valid_from`:** `valid_until` must be later than `valid_from`. Both may be in
+  the past — that is how a back-dated window for `as_of` queries is recorded, and it
+  stays supported.
+- **Without `valid_from`:** `valid_until` must be in the future. A `valid_until` that has
+  already passed is rejected, and the error says the time is already past (it does not
+  blame `valid_from`).
+
+To record a fact that has already ended, pass a complete back-dated window
+(`valid_from` before `valid_until`) or write the fact without `valid_until`, note the end
+in provenance, and let `contextcanon profile expire` move it to `expired`. WXT
+ContextCanon does not import history as already-expired rows on write.
+
 ## Sensitivity
 
 `public` → `personal` → `sensitive` → `restricted`.

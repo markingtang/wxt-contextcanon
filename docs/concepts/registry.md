@@ -44,6 +44,13 @@ from the event log at any time:
 ./contextcanon registry rebuild
 ```
 
+For `file.upsert` / `file.write` / `file.update`, authoring metadata carried in the event
+payload — `version` (the file's own tag, e.g. `"v3"`), `updated_by` and `date` — is
+preserved in the projected `state` next to `checksum` and `size`, so a query reflects the
+file version the writer recorded. The numeric `version` column remains the ledger's event
+counter and is never overwritten by a file version tag. Events without those fields
+project exactly as before.
+
 ## Idempotency
 
 `applied` records every `event_id` that has been projected. Delivering the same work twice
@@ -87,7 +94,7 @@ A device publishes what it holds, with a checksum:
 
 Manifests let two devices compare holdings without shipping content.
 
-## What 0.1.1 does not do
+## What 0.1.2 does not do
 
 - No real network transport between machines. The second device in `registry demo` is
   simulated locally, inside one process and one SQLite file, to prove the mechanics. Until

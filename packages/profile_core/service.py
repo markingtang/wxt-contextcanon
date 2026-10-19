@@ -97,15 +97,35 @@ class ProfileService:
         validate_identity(subject, key)
         validate_fact_input(value, sensitivity, durability)
         validate_score(certainty)
-        valid_from = normalize_timestamp(valid_from) if valid_from is not None else None
-        valid_until = normalize_timestamp(valid_until) if valid_until is not None else None
+        try:
+            valid_from = normalize_timestamp(valid_from) if valid_from is not None else None
+        except ValueError:
+            raise ValueError(
+                "valid_from must be an ISO timestamp with timezone, "
+                "e.g. 2026-10-13T12:00:00Z"
+            ) from None
+        try:
+            valid_until = normalize_timestamp(valid_until) if valid_until is not None else None
+        except ValueError:
+            raise ValueError(
+                "valid_until must be an ISO timestamp with timezone, "
+                "e.g. 2026-10-13T12:00:00Z"
+            ) from None
         if on_conflict not in CONFLICT_POLICIES:
             raise ValueError("on_conflict must be one of %s" % (list(CONFLICT_POLICIES),))
 
         actor = actor or self.actor
         at = normalize_timestamp(now_iso())
-        if valid_until and valid_until <= (valid_from or at):
+        if valid_until and valid_from and valid_until <= valid_from:
             raise ValueError("valid_until must be after valid_from")
+        if valid_until and not valid_from and valid_until <= at:
+            raise ValueError(
+                "valid_until is already in the past; without a valid_from, only a "
+                "future valid_until is accepted. To record a fact that has already "
+                "ended, either pass valid_from before valid_until (a back-dated "
+                "window for as_of queries) or omit valid_until and note the end "
+                "in provenance"
+            )
         existing = self.store.current_fact(subject, key, at)
         prov = Provenance.from_dict(provenance)
         validate_score(prov.confidence)

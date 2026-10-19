@@ -185,7 +185,7 @@ class BrandConsistencyTests(unittest.TestCase):
     def test_pyproject_metadata(self):
         text = read("pyproject.toml")
         self.assertIn('name = "%s"' % REPO_SLUG, text)
-        self.assertIn('version = "0.1.1"', text)
+        self.assertIn('version = "0.1.2"', text)
         self.assertIn('description = "%s"' % DESCRIPTION, text)
         self.assertIn(LICENSE_ID, text)
         self.assertIn('name = "%s"' % AUTHOR, text)

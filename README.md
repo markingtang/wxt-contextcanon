@@ -4,7 +4,7 @@ English | [简体中文](README.zh-CN.md)
 
 > Canonical context and state for AI agents.
 
-**WXT ContextCanon 0.1.1 — Public release.** Repository:
+**WXT ContextCanon 0.1.2 — Public release.** Repository:
 https://github.com/markingtang/wxt-contextcanon
 
 You run several AI agents. Each one starts fresh, re-learns the same things about you, and
@@ -105,7 +105,7 @@ flowchart LR
         R[("Registry Core<br/>events · outbox<br/>shared index")]
     end
 
-    subgraph Devices["Devices (0.1.1: both logical, one local store)"]
+    subgraph Devices["Devices (0.1.2: both logical, one local store)"]
         D1["device-a<br/>local SQLite"]
         D2["device-b<br/>logical, same store"]
     end
@@ -149,7 +149,7 @@ changed and when.
 **2. Two devices, one of them offline.**
 A second logical device queues file-state changes into a local outbox while it is
 "offline". When it reconnects, the events replay into the ledger, duplicate deliveries are
-skipped by event id, and a rebuild reconciles the shared index. Duplicate IDs with different content are rejected. *This is the mechanism you want for a real second machine — 0.1.1 runs the second
+skipped by event id, and a rebuild reconciles the shared index. Duplicate IDs with different content are rejected. *This is the mechanism you want for a real second machine — 0.1.2 runs the second
 device inside one process, so the transport is still to be built.*
 
 **3. "What did we believe in March?"**
@@ -242,7 +242,7 @@ see [docs/MCP_TOOLS.md](docs/MCP_TOOLS.md).
 The shared index is derived state. `contextcanon registry rebuild` recomputes it from the event
 log at any time, and if the rebuild fails it restores the last known-good index.
 
-In 0.1.1 every device id lives in the same local database. The mechanics are real; the
+In 0.1.2 every device id lives in the same local database. The mechanics are real; the
 network between machines is not.
 
 ---
@@ -299,11 +299,11 @@ second opinion.
 
 Be aware of these before you build on it:
 
-- **0.1.1 is single-machine at runtime.** Multi-agent is real. The second device in
+- **0.1.2 is single-machine at runtime.** Multi-agent is real. The second device in
   `contextcanon registry demo` is a logical device inside the same local database, used to prove
   the ledger mechanics. **Real cross-machine transport is not shipped.**
 - **SQLite only.** Transactions and SQL currently depend on SQLite; PostgreSQL requires a new implementation.
-- **No server process.** There is no HTTP API in 0.1.1; MCP is stdio and everything else is
+- **No server process.** There is no HTTP API in 0.1.2; MCP is stdio and everything else is
   the CLI. Docker is an optional one-shot CLI container with no health endpoint.
 - **No ingestion.** No email, calendar, health or finance connectors. No automatic chat
   import. Facts enter through the CLI or MCP.

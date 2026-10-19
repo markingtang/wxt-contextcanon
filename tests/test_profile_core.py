@@ -214,6 +214,46 @@ class ProfileCoreTests(unittest.TestCase):
         self.service.upsert_fact("s1", "n", 40, actor="test")
         self.assertEqual(self.service.upsert_fact("s1", "n", 40, actor="test")["action"], "unchanged")
 
+    # --------------------------------- valid_until error clarity (0.1.2)
+
+    def test_past_valid_until_without_valid_from_is_rejected_clearly(self):
+        """The rule is unchanged; the message must say the time is in the past."""
+        with self.assertRaises(ValueError) as ctx:
+            self.service.upsert_fact("s1", "k", "v", valid_until="2020-01-02T00:00:00Z", actor="test")
+        message = str(ctx.exception)
+        self.assertIn("past", message)
+        self.assertNotIn("after valid_from", message)
+
+    def test_valid_until_before_valid_from_keeps_its_own_message(self):
+        with self.assertRaises(ValueError) as ctx:
+            self.service.upsert_fact("s1", "k", "v",
+                                     valid_from="2020-01-05T00:00:00Z",
+                                     valid_until="2020-01-02T00:00:00Z", actor="test")
+        self.assertIn("after valid_from", str(ctx.exception))
+
+    def test_malformed_timestamps_name_the_offending_field(self):
+        with self.assertRaises(ValueError) as ctx:
+            self.service.upsert_fact("s1", "k", "v", valid_from="not-a-date", actor="test")
+        self.assertIn("valid_from", str(ctx.exception))
+        with self.assertRaises(ValueError) as ctx:
+            self.service.upsert_fact("s1", "k", "v", valid_until="2020-01-01", actor="test")
+        self.assertIn("valid_until", str(ctx.exception))
+        self.assertIn("timezone", str(ctx.exception))
+
+    def test_future_valid_until_is_accepted(self):
+        result = self.service.upsert_fact("s1", "k", "v",
+                                          valid_until="2999-01-01T00:00:00Z", actor="test")
+        self.assertEqual(result["action"], "created")
+        self.assertEqual(result["fact"]["valid_until"], "2999-01-01T00:00:00.000000Z")
+
+    def test_back_dated_window_with_valid_from_is_still_accepted(self):
+        """A past window with valid_from is a supported as_of pattern, unchanged."""
+        result = self.service.upsert_fact("s1", "pass", "winter",
+                                          valid_from="2020-01-01T00:00:00Z",
+                                          valid_until="2020-06-01T00:00:00Z", actor="test")
+        self.assertEqual(result["action"], "created")
+        self.assertEqual(len(self.service.as_of("s1", "2020-03-01T00:00:00Z")), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -145,6 +145,46 @@ class RegistryCoreTests(unittest.TestCase):
         self.assertNotEqual(first["event_id"], second["event_id"])
         self.assertEqual(len(self.service.store.all_events()), 2)
 
+    # ------------------------------------------- file metadata projection
+
+    def test_file_metadata_survives_projection_and_rebuild(self):
+        """version/updated_by/date from file.upsert must be queryable."""
+        self.service.append_event("file.upsert", {
+            "object_key": "notes/sprint.md", "checksum": "c3",
+            "version": "v3", "updated_by": "agent-b", "date": "2026-10-10",
+        })
+        self.service.apply_all()
+        row = self.service.query("notes/sprint.md", "device-a")[0]
+        self.assertEqual(row["state"]["version"], "v3")
+        self.assertEqual(row["state"]["updated_by"], "agent-b")
+        self.assertEqual(row["state"]["date"], "2026-10-10")
+        self.assertEqual(row["state"]["status"], "present")
+        self.assertEqual(row["state"]["checksum"], "c3")
+        # the ledger's own numeric event counter stays a counter, not "v3"
+        self.assertEqual(row["version"], 1)
+        # rebuild must reproduce the same projection
+        self.service.rebuild_shared_index()
+        after = self.service.query("notes/sprint.md", "device-a")[0]
+        self.assertEqual(after["state"], row["state"])
+        self.assertEqual(after["version"], row["version"])
+
+    def test_events_without_metadata_project_exactly_as_before(self):
+        """Legacy events (no version/updated_by/date) gain no new state keys."""
+        self.service.append_event("file.upsert", {"object_key": "a.md", "checksum": "c1"})
+        self.service.apply_all()
+        state = self.service.query("a.md", "device-a")[0]["state"]
+        self.assertEqual(sorted(state), ["checksum", "last_event", "size", "status", "updated_at"])
+
+    def test_second_upsert_replaces_projected_file_version(self):
+        for index, tag in enumerate(("v1", "v2")):
+            self.service.append_event("file.upsert", {
+                "object_key": "a.md", "checksum": "c%d" % index, "version": tag,
+            })
+            self.service.apply_all()
+        row = self.service.query("a.md", "device-a")[0]
+        self.assertEqual(row["state"]["version"], "v2")
+        self.assertEqual(row["version"], 2, "numeric counter tracks events, not the file tag")
+
 
 if __name__ == "__main__":
     unittest.main()

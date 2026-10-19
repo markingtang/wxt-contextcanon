@@ -4,7 +4,7 @@
 
 > 为 AI Agent 提供统一的上下文与状态记录。
 
-**WXT ContextCanon 0.1.1 — 公开版本。** 仓库：
+**WXT ContextCanon 0.1.2 — 公开版本。** 仓库：
 https://github.com/markingtang/wxt-contextcanon
 
 你使用多个 AI Agent，它们每次都重新了解你的偏好、约束和决定，有时还各自保留不同答案。
@@ -78,7 +78,7 @@ flowchart LR
         P[("Profile Core<br/>事实 · 来源<br/>版本 · 生命周期")]
         R[("Registry Core<br/>事件 · outbox<br/>共享索引")]
     end
-    subgraph Devices["0.1.1：两个逻辑设备，一份本地存储"]
+    subgraph Devices["0.1.2：两个逻辑设备，一份本地存储"]
         D1["device-a<br/>本地 SQLite"]
         D2["device-b<br/>同一存储中的逻辑设备"]
     end
@@ -114,7 +114,7 @@ flowchart LR
 
 **2. 两个逻辑设备，其中一个离线。** 第二个逻辑设备把变更放入 outbox，恢复后将事件重放进账本，
 按 event ID 跳过重复投递，再重建索引。同 ID 但内容不同的事件会被拒绝。
-0.1.1 在一个进程和本地存储内演示此机制，真实机器间传输尚待实现。
+0.1.2 在一个进程和本地存储内演示此机制，真实机器间传输尚待实现。
 
 **3. “某个时间点有效的记录是什么？”** 事实带有 `valid_from` / `valid_until`，
 `profile_as_of` 可以查询临时或计划时间窗口。随项目提供的 last-write-wins Markdown 基线
@@ -195,7 +195,7 @@ CMD 使用 `contextcanon.cmd`；Linux/macOS/Git Bash 使用 `./contextcanon`。
 ```
 
 共享索引是派生状态；`./contextcanon registry rebuild` 从事件日志重新计算。
-重建失败会恢复上一次可用的索引。0.1.1 的所有 device ID 都位于同一份本地数据库，尚无机器间网络。
+重建失败会恢复上一次可用的索引。0.1.2 的所有 device ID 都位于同一份本地数据库，尚无机器间网络。
 
 ## 隐私模型
 
@@ -234,7 +234,7 @@ CMD 使用 `contextcanon.cmd`；Linux/macOS/Git Bash 使用 `./contextcanon`。
 
 ## 当前限制
 
-- **0.1.1 单机运行**：支持同机多 Agent；Registry 第二个设备只是本地逻辑设备，没有真实跨机器传输。
+- **0.1.2 单机运行**：支持同机多 Agent；Registry 第二个设备只是本地逻辑设备，没有真实跨机器传输。
 - **只有 SQLite**：事务和 SQL 依赖 SQLite，PostgreSQL 需要新实现。
 - **没有 HTTP API**：MCP 使用 stdio，其余通过 CLI；Docker 是一次性命令容器，没有健康检查接口。
 - **没有自动导入**：不连接邮件、日历、健康或财务平台，不自动导入 ChatGPT 等聊天记录；事实通过 CLI/MCP 写入。

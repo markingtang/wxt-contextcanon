@@ -187,6 +187,14 @@ class RegistryService:
 
         if kind in ("file.upsert", "file.write", "file.update"):
             state = {"status": "present", "checksum": payload.get("checksum", ""), "size": payload.get("size")}
+            # Carry the authoring metadata the event accepted (file version tag,
+            # who updated it, the authoring date) into the projection. These are
+            # payload fields and must not be confused with - or overwrite - the
+            # index's own numeric event counter (`version` column). Events that
+            # never carried these fields project exactly as before.
+            for meta_key in ("version", "updated_by", "date"):
+                if payload.get(meta_key) is not None:
+                    state[meta_key] = payload[meta_key]
         elif kind in ("file.delete", "file.remove"):
             state = {"status": "deleted"}
         elif kind == "file.move":

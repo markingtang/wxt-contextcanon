@@ -18,15 +18,15 @@ The four-noun problem it solves:
 one personal context  +  one file-state ledger  +  many agents  +  many devices
 ```
 
-**What that means in 0.1.1, precisely:**
+**What that means in 0.1.2, precisely:**
 
-| Claimed by the tagline | Actually shipped in 0.1.1 |
+| Claimed by the tagline | Actually shipped in 0.1.2 |
 |---|---|
 | one personal context | **real** — Profile Core, multi-agent, shared store |
 | one file-state ledger | **real** — Registry Core, append-only, rebuildable |
 | many agents | **real** — several agents read and write the same profile |
 | many devices | **simulated** — a second *logical* device in the same local database. Ledger mechanics are exercised; **no network transport between machines exists yet**. |
-| 0.1.1 runtime | **single-machine** — one host, one local SQLite per store |
+| 0.1.2 runtime | **single-machine** — one host, one local SQLite per store |
 
 ## 2. Technology choices and why
 
@@ -38,7 +38,7 @@ one personal context  +  one file-state ledger  +  many agents  +  many devices
 | **JSON config, not YAML** | No parser dependency. | Slightly less friendly to hand-edit |
 | **Docker optional** | Storage is a local file; containers add nothing to the core value. | "Production-like" path is less exercised |
 
-**No** vector database, graph database, Redis, PostgreSQL (in 0.1.1), SaaS, cloud, paid
+**No** vector database, graph database, Redis, PostgreSQL (in 0.1.2), SaaS, cloud, paid
 component, dashboard, multi-tenancy, permission backend, mobile app, ingestion
 connectors, or LLM calls at runtime.
 
@@ -207,7 +207,7 @@ server:   name · version
 Example values are `127.0.0.1`, `localhost`, `./data`, `demo-device`,
 `wxt-contextcanon`. No host alias ships, so the ssh transport cannot run by accident.
 
-## 10. What is excluded from 0.1.1, on purpose
+## 10. What is excluded from 0.1.2, on purpose
 
 Hindsight · Mem0 · Supermemory · Cognee · vector DB · graph DB · Redis · SaaS · cloud
 version · commercial tier · complex dashboard · multi-tenancy · permission backend ·
@@ -217,7 +217,7 @@ mobile app · automatic chat import · email/calendar/health/finance connectors.
 
 | Next step | What it needs | What it does **not** need |
 |---|---|---|
-| Real cross-machine transport (0.1.1's biggest gap) | a transport over the existing event log + outbox | schema change |
+| Real cross-machine transport (0.1.2's biggest gap) | a transport over the existing event log + outbox | schema change |
 | PostgreSQL | a new store class behind the service interface | API change |
 | HTTP API | a thin wrapper over the service layer | core change |
 | Conflict review UI | a consumer of `rejected` facts | model change |

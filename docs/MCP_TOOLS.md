@@ -80,6 +80,12 @@ receive no reply and cannot invoke tools. Bad calls do not terminate the stdio s
 Response: `{ action, fact, supersedes, conflicts_with }` where `action` is one of
 `created | superseded | rejected | kept | unchanged`.
 
+Validation failures return `isError: true` with a specific message, so a caller can tell
+the cases apart: a malformed timestamp names the offending field (`valid_until must be
+an ISO timestamp with timezone ...`), and a `valid_until` that has already passed without
+a `valid_from` says the time is already past instead of blaming `valid_from`. Passing a
+`valid_from` before `valid_until` still accepts back-dated windows.
+
 ### `profile_as_of`
 
 ```json
@@ -109,6 +115,11 @@ Response: `{ action, fact, supersedes, conflicts_with }` where `action` is one o
 ```json
 { "kind": "file.upsert", "payload": { "object_key": "notes/a.md", "checksum": "abc123" } }
 ```
+
+For `file.upsert` / `file.write` / `file.update`, optional payload fields `version`
+(the file's own tag, e.g. `"v3"`), `updated_by` and `date` are carried into the projected
+index state that `registry_query` returns, next to `checksum` and `size`. The row's
+numeric `version` stays the ledger's event counter.
 
 ## Protocol compatibility
 

@@ -22,7 +22,7 @@ try {
   const seed = spawnSync(python, ['-m', 'contextcanon_cli', 'demo', 'seed', '--reset'], {cwd: home, env, encoding: 'utf8'});
   assert.equal(seed.status, 0, seed.stderr);
   for (const mode of ['legacy', 'auto']) {
-    const client = new Client({name: 'contextcanon-synthetic-check', version: '0.1.1'}, {versionNegotiation: {mode}});
+    const client = new Client({name: 'contextcanon-synthetic-check', version: '0.1.2'}, {versionNegotiation: {mode}});
     const transport = new StdioClientTransport(server);
     const sent = [];
     const send = transport.send.bind(transport);

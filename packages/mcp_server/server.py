@@ -197,6 +197,13 @@ class ContextCanonMcpServer:
             except ToolError as exc:
                 return _result(req_id, {"content": [{"type": "text", "text": "error: %s" % exc}],
                                         "isError": True})
+            except ValueError as exc:
+                # Validation messages are curated and contain no config paths or
+                # stored data, so they are safe to hand back verbatim: an agent
+                # (or a user reading the transcript) must be able to tell an
+                # expired timestamp apart from a malformed one.
+                return _result(req_id, {"content": [{"type": "text", "text": "error: %s" % exc}],
+                                        "isError": True})
             except Exception as exc:  # never crash the agent's session
                 return _result(req_id, {"content": [{"type": "text", "text": "operation failed; check arguments and local configuration"}],
                                         "isError": True})

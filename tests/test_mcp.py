@@ -143,6 +143,42 @@ class McpTests(unittest.TestCase):
         missing = self.call("tools/call", {"name": "profile_get", "arguments": {}})
         self.assertTrue(missing["result"]["isError"])
 
+    # --------------------------------- validation errors are readable (0.1.2)
+
+    def test_past_valid_until_returns_distinguishable_error(self):
+        response = self.call("tools/call", {
+            "name": "profile_upsert",
+            "arguments": {"subject": "demo:alex-chen", "key": "contract", "value": "ended",
+                          "valid_until": "2020-01-02T00:00:00Z"}})
+        self.assertTrue(response["result"]["isError"])
+        text = response["result"]["content"][0]["text"]
+        self.assertIn("past", text)
+        self.assertNotIn("operation failed", text)
+
+    def test_malformed_valid_until_names_the_field(self):
+        response = self.call("tools/call", {
+            "name": "profile_upsert",
+            "arguments": {"subject": "demo:alex-chen", "key": "k", "value": "v",
+                          "valid_until": "not-a-date"}})
+        self.assertTrue(response["result"]["isError"])
+        self.assertIn("valid_until", response["result"]["content"][0]["text"])
+
+    def test_registry_metadata_roundtrip(self):
+        self.call("tools/call", {"name": "registry_event",
+                                 "arguments": {"kind": "file.upsert",
+                                               "payload": {"object_key": "demo/v3.md",
+                                                           "checksum": "c3",
+                                                           "version": "v3",
+                                                           "updated_by": "agent-b",
+                                                           "date": "2026-10-10"}}})
+        response = self.call("tools/call", {"name": "registry_query",
+                                            "arguments": {"object_key": "demo/v3.md"}})
+        row = json.loads(response["result"]["content"][0]["text"])["rows"][0]
+        self.assertEqual(row["state"]["version"], "v3")
+        self.assertEqual(row["state"]["updated_by"], "agent-b")
+        self.assertEqual(row["state"]["date"], "2026-10-10")
+        self.assertEqual(row["version"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

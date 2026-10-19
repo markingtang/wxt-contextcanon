@@ -145,6 +145,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     except KeyboardInterrupt:
         print(json.dumps({"error": "interrupted"}), file=sys.stderr)
         return 130
+    except ValueError as exc:
+        # Validation messages are curated by this project and contain no config
+        # values, SQL payloads or private paths; surfacing them lets a user
+        # distinguish an expired timestamp from a malformed one.
+        print(json.dumps({"error": "ValueError", "message": str(exc)}, ensure_ascii=False), file=sys.stderr)
+        return 1
     except Exception as exc:
         # Never echo config values, SQL payloads, or private paths in errors.
         print(json.dumps({"error": type(exc).__name__, "message": "operation failed; check arguments and local configuration"}), file=sys.stderr)
@@ -157,7 +163,7 @@ def _main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     if args.version:
-        print(json.dumps({"name": "wxt-contextcanon", "version": "0.1.1"}))
+        print(json.dumps({"name": "wxt-contextcanon", "version": "0.1.2"}))
         return 0
     if not args.command:
         parser.print_help()

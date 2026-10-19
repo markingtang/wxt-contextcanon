@@ -66,7 +66,7 @@ For migration/smoke, empty command strings mean "skip this step" and are reporte
 - **ssh-shell** — wraps the command as `ssh <alias> "cd <workdir> && <command>"`.
   Refuses to run unless `ssh.host_alias` is configured. **No alias is shipped.**
 
-Kubernetes, Nomad and Swarm are out of scope for 0.1.1.
+Kubernetes, Nomad and Swarm are out of scope for 0.1.2.
 
 ## Fake stack
 

@@ -79,7 +79,7 @@ concept.
 - Not a research-grade evaluation. Nine cases is a sketch, not a paper.
 - Not a performance benchmark. No latency, no throughput, no token cost.
 - Not a comparison against Mem0, Hindsight, Cognee, Supermemory or any other memory
-  system. Those are deliberately out of scope for 0.1.1 (see `../docs/THIRD_PARTY_NOTICES.md`).
+  system. Those are deliberately out of scope for 0.1.2 (see `../docs/THIRD_PARTY_NOTICES.md`).
 
 ## No private results
 
